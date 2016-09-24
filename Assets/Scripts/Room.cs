@@ -18,7 +18,7 @@ public class Room : MonoBehaviour
 
     public int                  roomID;
     public string               roomName;
-    [TextArea] public string    roomDescription;
+    [TextArea(10, 20)] public string    roomDescription;
 
     public bool HasItem(string p_itemName)
     {

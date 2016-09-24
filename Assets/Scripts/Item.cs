@@ -2,10 +2,12 @@
 using UnityEngine;[System.Serializable]
 public class Item : MonoBehaviour
 {
-    public string       itemName;
-    public string       itemDescription;
-    public int          itemID;
-    public List<Room>   locations;
+    public string               itemName;
+    public int                  itemID;
+    [TextArea(5,10)] public string    itemDescription;
+
+
+    public List<ItemInteraction> interactions;
 
     public bool         isUsable;
     public bool         isPickable;
