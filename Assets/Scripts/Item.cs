@@ -9,7 +9,7 @@ public class Item : MonoBehaviour
 
     public List<ItemInteraction> interactions;
 
-    public bool         isUsable;
-    public bool         isPickable;
-    public bool         isTransferable;
+    public bool isPickable;
+    public bool isUsable;
+    public bool isTransferable;
 }
