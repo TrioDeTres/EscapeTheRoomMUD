@@ -1,9 +1,9 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerData : MonoBehaviour
 {
+    public int          id;
     public string       playerName;
     public List<Item>   inventory;
     public Room         currentRoom;
