@@ -60,10 +60,10 @@ public class GameSceneManager : MonoBehaviour
         {
             //Right password
             if (__result == 123456)
-                UIManager.CreateMessage("RightPassword.", MessageColor.LIGHT_BLUE);
+                PlayInteraction(itemsManager.GetItem("suitcase").interactions[0]);
             //Wrong password
             else
-                UIManager.CreateMessage("WrongPassword.", MessageColor.LIGHT_BLUE);
+                UIManager.CreateMessage("This is the wrong password.", MessageColor.RED);
         }
         //Invalid password
         else

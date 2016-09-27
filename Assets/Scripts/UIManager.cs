@@ -50,8 +50,6 @@ public class UIManager : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.Return))
             ExecuteMassage();
-        //if (Input.GetKeyDown(KeyCode.A))
-        //    CreateUIMessage("lala");
     }
 
     public void ExecuteMassage()
@@ -97,7 +95,7 @@ public class UIManager : MonoBehaviour
         texts.Add(__text);
 
         inputField.ActivateInputField();
-        StartCoroutine(VerticalScrollBarDelay(true));
+        StartCoroutine(VerticalScrollBarDelay(__text, true));
     }
     private void CreateDefautUIMessage(DefaultMessageType p_type, List<string> p_params)
     {
@@ -120,18 +118,17 @@ public class UIManager : MonoBehaviour
                 break;
         }
         inputField.ActivateInputField();
-        StartCoroutine(VerticalScrollBarDelay(__recalculate));
+        StartCoroutine(VerticalScrollBarDelay(__text, __recalculate));
     }
-    IEnumerator VerticalScrollBarDelay(bool p_recalculateSize)
+    IEnumerator VerticalScrollBarDelay(Text p_text, bool p_recalculateSize)
     {
         yield return new WaitForSeconds(0.15f);
+
         if (p_recalculateSize)
-        {
-            texts[texts.Count - 1].GetComponent<LayoutElement>().preferredHeight *=
-                texts[texts.Count - 1].cachedTextGenerator.lines.Count;
-            verticalScrollBar.value = 0f;
-        }
-        else
-            verticalScrollBar.value = 0f;
+            p_text.GetComponent<LayoutElement>().preferredHeight *=
+                p_text.cachedTextGenerator.lines.Count;
+
+        yield return new WaitForSeconds(0.075f);
+        verticalScrollBar.value = 0f;
     }
 }

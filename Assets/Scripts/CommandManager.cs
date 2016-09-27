@@ -110,10 +110,10 @@ public class CommandManager : MonoBehaviour
                 return;
             case "look":
             case "l":
-                if (p_params.Count == 1 || p_params[1].ToLower() == "room")
+                if (p_params.Count == 1 || p_params[1] == "room")
                     OnTryToLookRoom();
                 else
-                    OnTryToLookItem(p_params[1].ToLower());
+                    OnTryToLookItem(p_params[1]);
                 return;
         }
 
@@ -171,12 +171,12 @@ public class CommandManager : MonoBehaviour
                 if (p_params.Count <= 2)
                     UIManager.CreateMessage("This command requires an item name and a target.", 
                         MessageColor.RED);
-                if (p_params[1].ToLower() == "hole")
-                    OnTryToUseHole(p_params[2].ToLower());
+                else if (p_params[1].ToLower() == "hole")
+                    OnTryToUseHole(p_params[2]);
                 else if (p_params[2].ToLower() == "suitcase")
                     OnTryToUseSuitcase(p_params[1]);
                 else
-                    OnTryToUseItem(p_params[1].ToLower(), p_params[2].ToLower());
+                    OnTryToUseItem(p_params[1], p_params[2]);
                 break;
             //--------------------
             //Chat commands
