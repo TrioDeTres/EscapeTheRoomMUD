@@ -1,20 +1,23 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using Assets.Scripts;
 
 public class CommandManager : MonoBehaviour
 {
-    public event Action<CardinalPoint>  OnTryToMoveToRoom;
-    public event Action<string>         OnTryToShowInventory;
-    public event Action<string, string> OnTryToUseItem;
-    public event Action<string>         OnTryToUseHole;
-    public event Action<string>         OnTryToUseSuitcase;
-    public event Action<string>         OnTryToGetItem;
-    public event Action<string>         OnTryToDropItem;
-    public event Action                 OnTryToLookRoom;
-    public event Action<string>         OnTryToLookItem;
+    public event Action<CardinalPoint>          OnTryToMoveToRoom;
+    public event Action<string>                 OnTryToShowInventory;
+    public event Action<string, string>         OnTryToUseItem;
+    public event Action<string>                 OnTryToUseHole;
+    public event Action<string>                 OnTryToUseSuitcase;
+    public event Action<string>                 OnTryToGetItem;
+    public event Action<string>                 OnTryToDropItem;
+    public event Action                         OnTryToLookRoom;
+    public event Action<int>                    OnTryToStartServer;
+    public event Action                         OnTryToStopServer;
+    public event Action<string, int, string>    OnTryToConnectOnServer;
+    public event Action<string>                 OnTryToLookItem;
 
     public void ParseMessage(string p_msg)
     {
@@ -25,16 +28,111 @@ public class CommandManager : MonoBehaviour
     {
         if (p_params.Count == 0)
             return;
-        switch (p_params[0].ToLower())
+
+        // commands that partially affect network
+        switch (p_params[0])
         {
+            case "connect":
+            case "n":
+                if (NetworkManager.IsClientConnected())
+                {
+                    UIManager.CreateMessage("Client already connected.", MessageColor.RED);
+                    return;
+                }
+
+                if (p_params.Count == 4)
+                {
+                    OnTryToConnectOnServer(p_params[1], int.Parse(p_params[2]), p_params[3]);
+
+                    if (NetworkManager.IsClientConnected())
+                        UIManager.CreateMessage("Connecting under local server on port " + p_params[2] + ".", MessageColor.YELLOW);
+                }
+                else if (p_params.Count == 2)
+                {
+                    OnTryToConnectOnServer("127.0.0.1", 2300, p_params[1]);
+
+                    if (NetworkManager.IsClientConnected())
+                        UIManager.CreateMessage("Connecting under local server on default port (2300).", MessageColor.YELLOW);
+                }
+                else
+                {
+                    OnTryToConnectOnServer("127.0.0.1", 2300, null);
+
+                    if (NetworkManager.IsClientConnected())
+                        UIManager.CreateMessage("Connecting under local server on default port (2300).", MessageColor.YELLOW);
+                }
+
+                return;
+            case "start":
+            case "t":
+                if (NetworkManager.IsLocalServerStarted())
+                {
+                    UIManager.CreateMessage("Server already started.", MessageColor.RED);
+                    return;
+                }
+
+                if (p_params.Count == 2)
+                {
+                    OnTryToStartServer(int.Parse(p_params[1]));
+
+                    if (NetworkManager.IsLocalServerStarted())
+                        UIManager.CreateMessage("You successfully started server on port " + p_params[1] + ".", MessageColor.YELLOW);
+                }
+                else
+                {
+                    OnTryToStartServer(2300);
+
+                    if (NetworkManager.IsLocalServerStarted())
+                        UIManager.CreateMessage("You successfully started server on default port (2300).", MessageColor.YELLOW);
+                }
+
+                return;
+            case "stop":
+            case "p":
+                if (NetworkManager.IsLocalServerStarted())
+                {
+                    OnTryToStopServer();
+                    UIManager.CreateMessage("Server shutting down.", MessageColor.YELLOW);
+                }
+                else
+                {
+                    UIManager.CreateMessage("Server isn't running.", MessageColor.RED);
+                }
+
+                return;
             case "help":
             case "h":
                 UIManager.CreateDefautMessage(DefaultMessageType.HELP_CMD_HELP_TEXT);
-                break;
+                return;
             case "clear":
             case "c":
                 UIManager.ClearMessages();
-                break;
+                return;
+            case "look":
+            case "l":
+                if (p_params.Count == 1 || p_params[1].ToLower() == "room")
+                    OnTryToLookRoom();
+                else
+                    OnTryToLookItem(p_params[1].ToLower());
+                return;
+        }
+
+        // cannot proceed without being connected to server
+        if (!NetworkManager.IsClientConnected() && !NetworkManager.IsLocalServerStarted())
+        {
+            UIManager.CreateMessage("You aren't connected to a server. Type help for instructions.", MessageColor.RED);
+            return;
+        }
+
+        // complete handshake responding with player name
+        if (!NetworkManager.IsPlayerNameReady())
+        {
+            NetworkManager.SendPlayerNameToServer(p_params[0]);
+            return;
+        }
+
+        switch (p_params[0])
+        {
             //--------------------
             //Room commands
             case "move":
@@ -44,13 +142,7 @@ public class CommandManager : MonoBehaviour
                 else
                     MoveCommand(p_params[1]);
                 break;
-            case "look":
-            case "l":
-                if (p_params.Count == 1 || p_params[1].ToLower() == "room")
-                    OnTryToLookRoom();
-                else 
-                    OnTryToLookItem(p_params[1].ToLower());
-                break;
+            
             //--------------------
             //Items commands
             case "inventory":
@@ -98,6 +190,7 @@ public class CommandManager : MonoBehaviour
                 break;
         }
     }
+
     public void MoveCommand(string p_direction)
     {
         switch (p_direction.ToLower())

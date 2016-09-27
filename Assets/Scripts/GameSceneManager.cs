@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using Assets.Scripts;
 using UnityEngine;
 
 public class GameSceneManager : MonoBehaviour
@@ -10,9 +12,12 @@ public class GameSceneManager : MonoBehaviour
     public ItemsManager itemsManager;
     public PlayersManager playersManager;
     public PlayerData activePlayer;
+    public NetworkManager networkManager;
 
     void Start()
     {
+        networkManager.OnMoveToRoom += MoveToRoom;
+
         commandManager.OnTryToMoveToRoom += TryToMoveToRoom;
         commandManager.OnTryToShowInventory += TryToShowInventory;
         commandManager.OnTryToGetItem += TryToGetItem;
@@ -21,8 +26,27 @@ public class GameSceneManager : MonoBehaviour
         commandManager.OnTryToLookItem += TryToLookItem;
         commandManager.OnTryToUseItem += TryToUseItem;
         commandManager.OnTryToUseSuitcase += TryToUseSuitcase;
+        commandManager.OnTryToConnectOnServer += OnTryToConnectOnServer;
+        commandManager.OnTryToStartServer += OnTryToSetupServer;
+        commandManager.OnTryToStopServer += OnTryToStopServer;
+
         uiManager.OnExecuteMessage += commandManager.ParseMessage;
         activePlayer.currentRoom = roomsManager.rooms[1];
+    }
+
+    private void OnTryToConnectOnServer(string p_address, int p_port, string p_playerName)
+    {
+        networkManager.Connect(p_address, p_port);
+    }
+
+    private void OnTryToSetupServer(int p_port)
+    {
+        networkManager.StartServer(p_port);
+    }
+
+    private void OnTryToStopServer()
+    {
+        networkManager.StopServer();
     }
 
     private void TryToUseSuitcase(string p_param)
@@ -137,6 +161,11 @@ public class GameSceneManager : MonoBehaviour
     private void TryToMoveToRoom(CardinalPoint p_direction)
     {
         roomsManager.TryToMoveToRoom(activePlayer, p_direction);
+    }
+
+    private void MoveToRoom(string[] p_inputs)
+    {
+        UIManager.CreateMessage("Received inputs > " + string.Join(", ", p_inputs), MessageColor.LIGHT_BLUE);
     }
 
     private void TryToLookRoom()
