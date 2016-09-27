@@ -8,12 +8,13 @@ public class CommandManager : MonoBehaviour
 {
     public event Action<CardinalPoint>  OnTryToMoveToRoom;
     public event Action<string>         OnTryToShowInventory;
+    public event Action<string, string> OnTryToUseItem;
+    public event Action<string>         OnTryToUseHole;
+    public event Action<string>         OnTryToUseSuitcase;
     public event Action<string>         OnTryToGetItem;
     public event Action<string>         OnTryToDropItem;
     public event Action                 OnTryToLookRoom;
     public event Action<string>         OnTryToLookItem;
-
-    public event Action<DefaultMessageType, List<string>> OnMessageError;
 
     public void ParseMessage(string p_msg)
     {
@@ -39,16 +40,16 @@ public class CommandManager : MonoBehaviour
             case "move":
             case "m":
                 if (p_params.Count == 1)
-                    UIManager.CreateDefautMessage(DefaultMessageType.MOVE_CMD_WRONG_DIRECTION);
+                    UIManager.CreateDefautMessage(DefaultMessageType.WRONG_DIRECTION);
                 else
                     MoveCommand(p_params[1]);
                 break;
             case "look":
             case "l":
-                if (p_params.Count == 2)
-                    OnTryToLookItem(p_params[1]);
-                else
+                if (p_params.Count == 1 || p_params[1].ToLower() == "room")
                     OnTryToLookRoom();
+                else 
+                    OnTryToLookItem(p_params[1].ToLower());
                 break;
             //--------------------
             //Items commands
@@ -75,7 +76,15 @@ public class CommandManager : MonoBehaviour
                 break;
             case "use":
             case "u":
-                Debug.Log("Use the item(p_params[1]) from room/inventory on target(p_params[2])");
+                if (p_params.Count <= 2)
+                    UIManager.CreateMessage("This command requires an item name and a target.", 
+                        MessageColor.RED);
+                if (p_params[1].ToLower() == "hole")
+                    OnTryToUseHole(p_params[2].ToLower());
+                else if (p_params[2].ToLower() == "suitcase")
+                    OnTryToUseSuitcase(p_params[1]);
+                else
+                    OnTryToUseItem(p_params[1].ToLower(), p_params[2].ToLower());
                 break;
             //--------------------
             //Chat commands
@@ -111,7 +120,7 @@ public class CommandManager : MonoBehaviour
                 break;
 
             default:
-                OnMessageError(DefaultMessageType.MOVE_CMD_WRONG_DIRECTION, new List<string>());
+                UIManager.CreateDefautMessage(DefaultMessageType.WRONG_DIRECTION);
                 break;
         }
     }

@@ -7,21 +7,17 @@ using UnityEngine.UI;
 public enum DefaultMessageType
 {
     HELP_CMD_HELP_TEXT,
-    MOVE_CMD_WRONG_DIRECTION,
-    MOVE_CMD_NO_ROOM_IN_DIRECTION,
-    MOVE_CMD_LOCKED_ROOM,
-    INVENTORY_CMD_NO_PLAYER_IN_GAME,
-    INVENTORY_CMD_NO_PLAYER_IN_ROOM,
-    INVENTORY_CMD_EMPTY_INVENTORY,
-    INVENTORY_CMD_SHOW_INVENTORY,
-    GET_CMD_GET_ITEM,
-    DROP_CMD_DROP_ITEM,
+    WRONG_DIRECTION,
+    SHOW_INVENTORY,
+    GET_ITEM,
+    DROP_ITEM,
     ITEM_NOT_FOUND
 }
 public enum MessageColor
 {
     WHITE,
     RED,
+    LIGHT_BLUE,
     BLUE,
     YELLOW
 }
@@ -93,6 +89,7 @@ public class UIManager : MonoBehaviour
     {
         GameObject __go = Instantiate(uiMessagePrefab);
         __go.transform.SetParent(messagesContainer.transform);
+        __go.transform.localScale = Vector3.one;
 
         Text __text = __go.GetComponent<Text>();
         __text.text = p_message;
@@ -106,6 +103,7 @@ public class UIManager : MonoBehaviour
     {
         GameObject __go = Instantiate(uiDefaultMessagesPrefabs[(int)p_type]);
         __go.transform.SetParent(messagesContainer.transform);
+        __go.transform.localScale = Vector3.one;
 
         Text __text = __go.GetComponent<Text>();
         texts.Add(__text);
@@ -113,15 +111,9 @@ public class UIManager : MonoBehaviour
 
         switch(p_type)
         {
-            case DefaultMessageType.MOVE_CMD_LOCKED_ROOM:
-                __text.text = p_params[0];
-                __recalculate = true;
-                break;
-            case DefaultMessageType.INVENTORY_CMD_NO_PLAYER_IN_GAME:
-            case DefaultMessageType.INVENTORY_CMD_NO_PLAYER_IN_ROOM:
-            case DefaultMessageType.INVENTORY_CMD_SHOW_INVENTORY:
-            case DefaultMessageType.GET_CMD_GET_ITEM:
-            case DefaultMessageType.DROP_CMD_DROP_ITEM:
+            case DefaultMessageType.SHOW_INVENTORY:
+            case DefaultMessageType.GET_ITEM:
+            case DefaultMessageType.DROP_ITEM:
             case DefaultMessageType.ITEM_NOT_FOUND:
                 __text.text += string.Join(string.Empty, p_params.ToArray());
                 __recalculate = true;

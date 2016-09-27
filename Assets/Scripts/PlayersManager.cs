@@ -16,28 +16,25 @@ public class PlayersManager : MonoBehaviour
             if (__data.currentRoom == p_activePlayer.currentRoom)
                 DisplayInventoryOfPlayer(__data);
             else
-                UIManager.CreateDefautMessage(DefaultMessageType.INVENTORY_CMD_NO_PLAYER_IN_ROOM,
-                    new List<string>() { p_name });
+                UIManager.CreateMessage("There is no player in the room with the name " + p_name);
         }
         else
-            UIManager.CreateDefautMessage(DefaultMessageType.INVENTORY_CMD_NO_PLAYER_IN_GAME,
-                    new List<string>() { p_name });
-
+            UIManager.CreateMessage("There is no player in the game with the name " + p_name);
     }
     private void DisplayInventoryOfPlayer(PlayerData p_activePlayer)
     {
         if (p_activePlayer.inventory.Count == 0)
-            UIManager.CreateDefautMessage(DefaultMessageType.INVENTORY_CMD_EMPTY_INVENTORY);
+            UIManager.CreateMessage("The inventory is empty.", MessageColor.RED);
         else
         {
             string __inventoryText = "";
             for (int i = 0; i < p_activePlayer.inventory.Count; i++)
             {
-                __inventoryText += p_activePlayer.inventory[i].itemName;
+                __inventoryText += p_activePlayer.inventory[i].GetFullName();
                 if (i < p_activePlayer.inventory.Count - 1)
                     __inventoryText += ", ";
             }
-            UIManager.CreateDefautMessage(DefaultMessageType.INVENTORY_CMD_SHOW_INVENTORY, 
+            UIManager.CreateDefautMessage(DefaultMessageType.SHOW_INVENTORY, 
                 new List<string> { __inventoryText });
         }
     }
