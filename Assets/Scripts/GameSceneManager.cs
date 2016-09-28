@@ -11,7 +11,7 @@ public class GameSceneManager : MonoBehaviour
     public RoomsManager roomsManager;
     public ItemsManager itemsManager;
     public PlayersManager playersManager;
-    public PlayerData activePlayer;
+    public static PlayerData activePlayer;
     public NetworkManager networkManager;
 
     void Start()
@@ -31,7 +31,6 @@ public class GameSceneManager : MonoBehaviour
         commandManager.OnTryToStopServer += OnTryToStopServer;
 
         uiManager.OnExecuteMessage += commandManager.ParseMessage;
-        activePlayer.currentRoom = roomsManager.rooms[2];
     }
 
     private void OnTryToConnectOnServer(string p_address, int p_port, string p_playerName)
@@ -163,9 +162,9 @@ public class GameSceneManager : MonoBehaviour
         networkManager.AskServerMoveToRoom(activePlayer, p_direction);
     }
 
-    private void MoveToRoom(string[] p_inputs)
+    private void MoveToRoom(PlayerData p_playerData, CardinalPoint p_cardinalPoint)
     {
-        UIManager.CreateMessage("Received inputs > " + string.Join(", ", p_inputs), MessageColor.LIGHT_BLUE);
+        roomsManager.MoveToRoom(p_playerData, p_cardinalPoint, activePlayer.id == p_playerData.id);
     }
 
     private void TryToLookRoom()

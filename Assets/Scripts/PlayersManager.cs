@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class PlayersManager : MonoBehaviour
 {
-    public List<PlayerData> players;
+    public List<PlayerData> players = new List<PlayerData>();
 
     public void CreatePlayer(int p_id, string p_name)
     {

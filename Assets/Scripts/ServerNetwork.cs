@@ -9,11 +9,14 @@ namespace Assets.Scripts
     {
         public bool isServerStarted { get; private set; }
 
-        public PlayersManager playersManager;
-        public RoomsManager roomsManager;
+        public readonly PlayersManager playersManager;
+        public readonly RoomsManager roomsManager;
 
-        public ServerNetwork()
+        public ServerNetwork(PlayersManager playersManager, RoomsManager roomsManager)
         {
+            this.playersManager = playersManager;
+            this.roomsManager = roomsManager;
+
             isServerStarted = false;
         }
 
@@ -60,18 +63,33 @@ namespace Assets.Scripts
             UIManager.CreateMessage("Client said his name is " + defaultMessage.inputs[0], MessageColor.LIGHT_BLUE);
 
             playersManager.CreatePlayer(message.conn.connectionId, defaultMessage.inputs[0]);
+
+            UIManager.CreateMessage("Created player with id " + message.conn.connectionId + ".", MessageColor.LIGHT_BLUE);
+
+            bool __leftSide = true;
+            if (message.conn.connectionId == 1 || message.conn.connectionId == 3)
+                roomsManager.rooms[0].playersInRoom.Add(playersManager.FindPlayerById(message.conn.connectionId));
+            else
+            {
+                roomsManager.rooms[5].playersInRoom.Add(playersManager.FindPlayerById(message.conn.connectionId));
+                __leftSide = false;
+            }
+            message.conn.Send(MessageConstants.PLAYER_ID, new NetworkDefaultMessage(new string[] { message.conn.connectionId.ToString(), defaultMessage.inputs[0], __leftSide.ToString() }));
         }
 
-        public void CanMoveToRoom(Action<string[]> handler, NetworkMessage message)
+        public void CanMoveToRoom(Action<PlayerData, CardinalPoint> handler, NetworkMessage message)
         {
             NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
 
             PlayerData playerData = playersManager.FindPlayerById(int.Parse(defaultMessage.inputs[0]));
             CardinalPoint cardinalPoint = (CardinalPoint)int.Parse(defaultMessage.inputs[1]);
 
-            if (!roomsManager.TryToMoveToLockedRoom(playerData, cardinalPoint))
-
-            handler(defaultMessage.inputs);
+            if (roomsManager.CheckDirectionNotExists(playerData, cardinalPoint))
+                message.conn.Send(MsgType.Error, new NetworkDefaultMessage(new string[] { "There is nothing on this direction.", "1" }));
+            else if (roomsManager.CheckIfRoomIsLocked(playerData, cardinalPoint))
+                message.conn.Send(MsgType.Error, new NetworkDefaultMessage(new string[] { roomsManager.GetMessageWhenLocked(playerData, cardinalPoint), "1" }));
+            else
+                handler(playerData, cardinalPoint);
         }
     }
 }

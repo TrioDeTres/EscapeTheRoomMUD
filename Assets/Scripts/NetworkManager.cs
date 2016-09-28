@@ -8,6 +8,7 @@ namespace Assets.Scripts
     {
         public static short MOVE = 1000;
         public static short PLAYER_NAME = 1001;
+        public static short PLAYER_ID = 1001;
     }
 
     public class NetworkManager : MonoBehaviour
@@ -15,15 +16,15 @@ namespace Assets.Scripts
         private static ClientNetwork clientNetwork;
         private static ServerNetwork serverNetwork;
 
-        public Action<string[]> OnMoveToRoom;
+        public RoomsManager roomsManager;
+        public PlayersManager playersManager;
+
+        public Action<PlayerData, CardinalPoint> OnMoveToRoom;
 
         public void Start()
         {
-            clientNetwork = new ClientNetwork();
-            serverNetwork = new ServerNetwork();
-
-            serverNetwork.RegisterServerHandler(MessageConstants.MOVE, CanMoveToRoom);
-            clientNetwork.RegisterServerHandler(MessageConstants.MOVE, MoveToRoom);
+            clientNetwork = new ClientNetwork(playersManager, roomsManager);
+            serverNetwork = new ServerNetwork(playersManager, roomsManager);
         }
 
         public void AskServerMoveToRoom(PlayerData p_playerData, CardinalPoint p_cardinalPoint)
@@ -51,11 +52,15 @@ namespace Assets.Scripts
         public void ConnectOnServer(string p_address, int p_port)
         {
             clientNetwork.Connect(p_address, p_port);
+
+            clientNetwork.RegisterServerHandler(MessageConstants.MOVE, MoveToRoom);
         }
 
         public void StartServer(int p_port)
         {
             serverNetwork.StartServer(p_port);
+
+            serverNetwork.RegisterServerHandler(MessageConstants.MOVE, CanMoveToRoom);
         }
 
         public void StopServer()
