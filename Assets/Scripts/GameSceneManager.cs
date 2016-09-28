@@ -31,7 +31,7 @@ public class GameSceneManager : MonoBehaviour
         commandManager.OnTryToStopServer += OnTryToStopServer;
 
         uiManager.OnExecuteMessage += commandManager.ParseMessage;
-        activePlayer.currentRoom = roomsManager.rooms[1];
+        activePlayer.currentRoom = roomsManager.rooms[2];
     }
 
     private void OnTryToConnectOnServer(string p_address, int p_port, string p_playerName)

@@ -30,7 +30,18 @@ public class RoomsManager : MonoBehaviour
 
     public void TryToLookRoom(PlayerData p_player)
     {
-        UIManager.CreateMessage("Room Description: " + Environment.NewLine +
-            p_player.currentRoom.roomDescription, MessageColor.LIGHT_BLUE);
+        string __desc = "Room Description: " + Environment.NewLine + p_player.currentRoom.roomDescription;
+        List<Item> __items = p_player.currentRoom.GetPickableItems();
+        if (__items.Count > 0)
+        {
+            __desc += " Other items in the room are:";
+
+            for (int i = 0; i < __items.Count; i++)
+                __desc += " " +__items[i].GetFullName() + ",";
+
+            __desc = __desc.Remove(__desc.Length -1);
+            __desc += ".";
+        }
+        UIManager.CreateMessage(__desc, MessageColor.LIGHT_BLUE);
     }
 }
