@@ -36,7 +36,7 @@ public class GameSceneManager : MonoBehaviour
 
     private void OnTryToConnectOnServer(string p_address, int p_port, string p_playerName)
     {
-        networkManager.Connect(p_address, p_port);
+        networkManager.ConnectOnServer(p_address, p_port);
     }
 
     private void OnTryToSetupServer(int p_port)
@@ -160,7 +160,7 @@ public class GameSceneManager : MonoBehaviour
 
     private void TryToMoveToRoom(CardinalPoint p_direction)
     {
-        roomsManager.TryToMoveToRoom(activePlayer, p_direction);
+        networkManager.AskServerMoveToRoom(activePlayer, p_direction);
     }
 
     private void MoveToRoom(string[] p_inputs)

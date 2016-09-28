@@ -6,8 +6,18 @@ using UnityEngine;
 public class RoomsManager : MonoBehaviour
 {
     public List<Room> rooms;
-    
-    public void TryToMoveToRoom(PlayerData p_player, CardinalPoint p_direction)
+
+    public bool TryToMoveToRoomInDirection(PlayerData p_player, CardinalPoint p_direction)
+    {
+        return p_player.currentRoom.adjacentRooms[(int)p_direction].targetRoom != null;
+    }
+
+    public bool TryToMoveToLockedRoom(PlayerData p_player, CardinalPoint p_direction)
+    {
+        return !p_player.currentRoom.adjacentRooms[(int)p_direction].isLocked;
+    }
+
+    public void MoveToRoom(PlayerData p_player, CardinalPoint p_direction)
     {
         //No room in direction
         if (p_player.currentRoom.adjacentRooms[(int)p_direction].targetRoom == null)

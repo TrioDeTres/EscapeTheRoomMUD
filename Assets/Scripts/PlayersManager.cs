@@ -6,6 +6,16 @@ public class PlayersManager : MonoBehaviour
 {
     public List<PlayerData> players;
 
+    public void CreatePlayer(int p_id, string p_name)
+    {
+        PlayerData player = new PlayerData();
+
+        player.playerName = p_name;
+        player.id = p_id;
+
+        players.Add(player);
+    }
+
     public void TryToDisplayInventory(PlayerData p_activePlayer, string p_name)
     {
         if (string.IsNullOrEmpty(p_name))
@@ -52,5 +62,10 @@ public class PlayersManager : MonoBehaviour
             if (players[i].playerName == p_name)
                 return true;
         return false;
+    }
+
+    public PlayerData FindPlayerById(int p_playerId)
+    {
+        return players.Find(p => p.id == p_playerId);
     }
 }
