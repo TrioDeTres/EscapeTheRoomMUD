@@ -11,13 +11,10 @@ public class GameSceneManager : MonoBehaviour
     public RoomsManager roomsManager;
     public ItemsManager itemsManager;
     public PlayersManager playersManager;
-    public static PlayerData activePlayer;
     public NetworkManager networkManager;
 
     void Start()
     {
-        networkManager.OnMoveToRoom += MoveToRoom;
-
         commandManager.OnTryToMoveToRoom += TryToMoveToRoom;
         commandManager.OnTryToShowInventory += TryToShowInventory;
         commandManager.OnTryToGetItem += TryToGetItem;
@@ -35,12 +32,13 @@ public class GameSceneManager : MonoBehaviour
 
     private void OnTryToConnectOnServer(string p_address, int p_port, string p_playerName)
     {
-        networkManager.ConnectOnServer(p_address, p_port);
+        networkManager.ConnectToServer(p_address, p_port);
     }
 
     private void OnTryToSetupServer(int p_port)
     {
         networkManager.StartServer(p_port);
+        networkManager.ConnectToServer("127.0.0.1", p_port);
     }
 
     private void OnTryToStopServer()
@@ -52,7 +50,7 @@ public class GameSceneManager : MonoBehaviour
     {
         int __result = 0;
         //Player is not on the Office
-        if (activePlayer.currentRoom != roomsManager.rooms[1])
+        if (playersManager.activePlayer.currentRoom != roomsManager.rooms[1])
             UIManager.CreateMessage("Item not found.", MessageColor.RED);
         //Valid password
         if (int.TryParse(p_param, out __result))
@@ -72,16 +70,16 @@ public class GameSceneManager : MonoBehaviour
     private void TryToUseItem(string p_source, string p_target)
     {
         //Player don't have the item
-        if (!activePlayer.HasItem(p_source))
+        if (!playersManager.activePlayer.HasItem(p_source))
             UIManager.CreateMessage("You don't have this item on your inventory.", MessageColor.RED);
         //There is no target item on the room
-        else if (!activePlayer.currentRoom.HasItem(p_target))
+        else if (!playersManager.activePlayer.currentRoom.HasItem(p_target))
             UIManager.CreateMessage("The target item is not on the room.", MessageColor.RED);
         //The items exist
         else
         {
-            Item __source = activePlayer.GetItem(p_source);
-            Item __target = activePlayer.currentRoom.GetItem(p_target);
+            Item __source = playersManager.activePlayer.GetItem(p_source);
+            Item __target = playersManager.activePlayer.currentRoom.GetItem(p_target);
 
             //Source can't be used
             if (!__source.isUsable)
@@ -121,11 +119,11 @@ public class GameSceneManager : MonoBehaviour
 
     private void TryToDropItem(string p_itemName)
     {
-        if (activePlayer.HasItem(p_itemName.ToLower()))
+        if (playersManager.activePlayer.HasItem(p_itemName.ToLower()))
         {
-            Item __item = activePlayer.GetItem(p_itemName.ToLower());
-            activePlayer.currentRoom.items.Add(__item);
-            activePlayer.inventory.Remove(__item);
+            Item __item = playersManager.activePlayer.GetItem(p_itemName.ToLower());
+            playersManager.activePlayer.currentRoom.items.Add(__item);
+            playersManager.activePlayer.inventory.Remove(__item);
             UIManager.CreateDefautMessage(DefaultMessageType.DROP_ITEM,
                     new List<string> { __item.itemName });
         }
@@ -135,13 +133,13 @@ public class GameSceneManager : MonoBehaviour
 
     private void TryToGetItem(string p_itemName)
     {
-        if (activePlayer.currentRoom.HasItem(p_itemName.ToLower()))
+        if (playersManager.activePlayer.currentRoom.HasItem(p_itemName.ToLower()))
         {
-            Item __item = activePlayer.currentRoom.GetItem(p_itemName.ToLower());
+            Item __item = playersManager.activePlayer.currentRoom.GetItem(p_itemName.ToLower());
             if (__item.isPickable)
             {
-                activePlayer.inventory.Add(__item);
-                activePlayer.currentRoom.items.Remove(__item);
+                playersManager.activePlayer.inventory.Add(__item);
+                playersManager.activePlayer.currentRoom.items.Remove(__item);
                 UIManager.CreateDefautMessage(DefaultMessageType.GET_ITEM,
                     new List<string> { __item.GetFullName() });
             }
@@ -154,22 +152,18 @@ public class GameSceneManager : MonoBehaviour
 
     private void TryToShowInventory(string p_target)
     {
-        playersManager.TryToDisplayInventory(activePlayer, p_target);
+        playersManager.TryToDisplayInventory(playersManager.activePlayer, p_target);
     }
 
     private void TryToMoveToRoom(CardinalPoint p_direction)
     {
-        networkManager.AskServerMoveToRoom(activePlayer, p_direction);
-    }
-
-    private void MoveToRoom(PlayerData p_playerData, CardinalPoint p_cardinalPoint)
-    {
-        roomsManager.MoveToRoom(p_playerData, p_cardinalPoint, activePlayer.id == p_playerData.id);
+        Debug.Log("Player id trying move to room " + playersManager.activePlayer.id);
+        networkManager.AskServerMoveToRoom(playersManager.activePlayer, p_direction);
     }
 
     private void TryToLookRoom()
     {
-        roomsManager.TryToLookRoom(activePlayer);
+        roomsManager.TryToLookRoom(playersManager.activePlayer);
     }
 
     private void TryToLookItem(string p_itemName)
@@ -178,16 +172,16 @@ public class GameSceneManager : MonoBehaviour
         if (!itemsManager.HasItem(p_itemName))
             UIManager.CreateMessage("Item not found.", MessageColor.RED);
         //Player have the item
-        else if (activePlayer.HasItem(p_itemName))
+        else if (playersManager.activePlayer.HasItem(p_itemName))
         {
-            Item __item = activePlayer.GetItem(p_itemName);
+            Item __item = playersManager.activePlayer.GetItem(p_itemName);
             UIManager.CreateMessage(__item.GetFullName() + ":" + 
                 Environment.NewLine + __item.itemDescription, MessageColor.LIGHT_BLUE);
         }
         //Room have the item
-        else if (activePlayer.currentRoom.HasItem(p_itemName))
+        else if (playersManager.activePlayer.currentRoom.HasItem(p_itemName))
         {
-            Item __item = activePlayer.currentRoom.GetItem(p_itemName);
+            Item __item = playersManager.activePlayer.currentRoom.GetItem(p_itemName);
             UIManager.CreateMessage(__item.GetFullName() + ":" +
                 Environment.NewLine + __item.itemDescription, MessageColor.LIGHT_BLUE);
         }

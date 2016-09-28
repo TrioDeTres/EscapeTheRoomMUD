@@ -50,4 +50,9 @@ public class RoomsManager : MonoBehaviour
         }
         UIManager.CreateMessage(__desc, MessageColor.LIGHT_BLUE);
     }
+
+    public Room FindRoomById(int p_roomId)
+    {
+        return rooms.Find(r => r.roomID == p_roomId);
+    }
 }

@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using UnityEngine.Networking;
+﻿using UnityEngine.Networking;
 
 public class NetworkDefaultMessage : MessageBase
 {

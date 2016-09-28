@@ -2,18 +2,24 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[SerializeField]
 public class PlayersManager : MonoBehaviour
 {
+    public PlayerData activePlayer;
     public List<PlayerData> players = new List<PlayerData>();
 
-    public void CreatePlayer(int p_id, string p_name)
+    public PlayerData CreatePlayer(int p_id, string p_name, Room p_currentRoom)
     {
         PlayerData player = new PlayerData();
 
         player.playerName = p_name;
         player.id = p_id;
+        player.currentRoom = p_currentRoom;
+        player.inventory = new List<Item>();
 
         players.Add(player);
+
+        return player;
     }
 
     public void TryToDisplayInventory(PlayerData p_activePlayer, string p_name)
