@@ -36,6 +36,15 @@ public class Room : MonoBehaviour
                 return items[i];
         return null;
     }
+
+    public List<Item> GetPickableItems()
+    {
+        List<Item> __items = new List<Item>();
+        for (int i = 0; i < items.Count; i++)
+            if (items[i].isPickable)
+                __items.Add(items[i]);
+        return __items;
+    }
 }
 
 
