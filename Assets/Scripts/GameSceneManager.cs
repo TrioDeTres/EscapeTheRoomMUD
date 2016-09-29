@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using Assets.Scripts;
 using UnityEngine;
 
 public class GameSceneManager : MonoBehaviour
@@ -132,35 +131,12 @@ public class GameSceneManager : MonoBehaviour
 
     private void TryToDropItem(string p_itemName)
     {
-        if (playersManager.activePlayer.HasItem(p_itemName.ToLower()))
-        {
-            Item __item = playersManager.activePlayer.GetItem(p_itemName.ToLower());
-            playersManager.activePlayer.currentRoom.items.Add(__item);
-            playersManager.activePlayer.inventory.Remove(__item);
-            UIManager.CreateDefautMessage(DefaultMessageType.DROP_ITEM,
-                    new List<string> { __item.itemName });
-        }
-        else
-            UIManager.CreateMessage("You don't have this item on your inventory.", MessageColor.RED);
+        networkManager.AskServerToDropItem(playersManager.activePlayer, p_itemName);
     }
 
     private void TryToGetItem(string p_itemName)
     {
-        if (playersManager.activePlayer.currentRoom.HasItem(p_itemName.ToLower()))
-        {
-            Item __item = playersManager.activePlayer.currentRoom.GetItem(p_itemName.ToLower());
-            if (__item.isPickable)
-            {
-                playersManager.activePlayer.inventory.Add(__item);
-                playersManager.activePlayer.currentRoom.items.Remove(__item);
-                UIManager.CreateDefautMessage(DefaultMessageType.GET_ITEM,
-                    new List<string> { __item.GetFullName() });
-            }
-            else
-                UIManager.CreateMessage("This item can't be picked up.", MessageColor.RED);
-        }
-        else
-            UIManager.CreateMessage("There is no item with this name in the room.", MessageColor.RED);
+        networkManager.AskServerToGetItem(playersManager.activePlayer, p_itemName);
     }
 
     private void TryToShowInventory(string p_target)

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using System.Net;
-using Assets.Scripts;
 
 public class CommandManager : MonoBehaviour
 {
@@ -132,14 +131,6 @@ public class CommandManager : MonoBehaviour
             case "c":
                 UIManager.ClearMessages();
                 return;
-
-            case "look":
-            case "l":
-                if (args.Count == 1 || args[1] == "room")
-                    OnTryToLookRoom();
-                else
-                    OnTryToLookItem(args[1]);
-                return;
         }
 
         // cannot proceed without being connected to server
@@ -155,9 +146,15 @@ public class CommandManager : MonoBehaviour
             OnSendPlayerNameToServer(args[0]);
             return;
         }
-
         switch (args[0])
         {
+            case "look":
+            case "l":
+                if (args.Count == 1 || args[1] == "room")
+                    OnTryToLookRoom();
+                else
+                    OnTryToLookItem(args[1]);
+                return;
             //--------------------
             //Room commands
             case "move":

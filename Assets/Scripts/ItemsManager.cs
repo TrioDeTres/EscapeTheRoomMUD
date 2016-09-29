@@ -32,4 +32,17 @@ public class ItemsManager : MonoBehaviour
             return null;
         return items[p_itemID];
     }
+
+    public string GetMessageWhenItemCantBePicked()
+    {
+        return "Server says: This item can't be picked up.";
+    }
+    public string GetMessageWhenSomeonePickedItem(string p_playerName, string p_itemName)
+    {
+        return "Server says: " + p_playerName + " picked up the " + p_itemName + ".";
+    }
+    public string GetMessageWhenSomeoneDroppedItem(string p_playerName, string p_itemName)
+    {
+        return "Server says: " + p_playerName + " dropped the " + p_itemName + ".";
+    }
 }

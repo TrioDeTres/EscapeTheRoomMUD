@@ -82,6 +82,8 @@ public class UIManager : MonoBehaviour
         for (int i = 0; i < texts.Count; i++)
             Destroy(texts[i].gameObject);
         texts.Clear();
+        inputField.ActivateInputField();
+        StartCoroutine(VerticalScrollBarDelay(null, false));
     }
     private void CreateUIMessage(string p_message, MessageColor p_color)
     {

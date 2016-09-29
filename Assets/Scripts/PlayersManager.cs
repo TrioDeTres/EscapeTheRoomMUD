@@ -89,4 +89,9 @@ public class PlayersManager : MonoBehaviour
         activePlayer = null;
         players.Clear();
     }
+
+    public string GetMessageWhenPlayerDontHaveItem()
+    {
+        return "Server says: You don't have this item on your inventory.";
+    }
 }
