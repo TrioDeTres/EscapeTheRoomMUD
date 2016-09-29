@@ -3,6 +3,7 @@
 public class NetworkUpdateRecentJoinedPlayer : MessageBase
 {
     public NetworkPlayerData[] players;
+    public bool isLobbyStillActive;
 
     public NetworkUpdateRecentJoinedPlayer() {}
 

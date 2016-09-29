@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -17,9 +16,19 @@ public class RoomsManager : MonoBehaviour
         return p_player.currentRoom.adjacentRooms[(int)p_direction].isLocked;
     }
 
+    public string GetMessageWhenDirectionNotExists()
+    {
+        return "Server says: There is nothing on this direction";
+    }
+
     public string GetMessageWhenLocked(PlayerData p_player, CardinalPoint p_direction)
     {
-        return p_player.currentRoom.adjacentRooms[(int)p_direction].messageWhenLocked;
+        return "Server says: " + p_player.currentRoom.adjacentRooms[(int)p_direction].messageWhenLocked;
+    }
+
+    public string GetMessageWhenMovedSuccessfully(string playerName)
+    {
+        return "Server says: " + playerName + " has left room.";
     }
 
     public void MoveToRoom(PlayerData p_player, CardinalPoint p_direction, bool p_localPlayer)
@@ -30,7 +39,7 @@ public class RoomsManager : MonoBehaviour
         p_player.currentRoom.playersInRoom.Add(p_player);
 
         if (p_localPlayer) { 
-            UIManager.CreateMessage("You moved " + p_direction.ToString().ToLower() + ". You are now at the " + p_player.currentRoom.roomFullName + ".", MessageColor.LIGHT_BLUE);
+            UIManager.CreateMessage("Server says: You moved " + p_direction.ToString().ToLower() + ". You are now at the " + p_player.currentRoom.roomFullName + ".", MessageColor.LIGHT_BLUE);
         }
     }
 
@@ -54,5 +63,27 @@ public class RoomsManager : MonoBehaviour
     public Room FindRoomById(int p_roomId)
     {
         return rooms.Find(r => r.roomID == p_roomId);
+    }
+
+    public Room PickRoomForPlayer(int playerId)
+    {
+        if (playerId == 1 || playerId == 3)
+        {
+            return FindRoomById(0); // RoomA0_DinningRoom
+        }
+        else
+        {
+            return FindRoomById(4); // RoomB0_Playroom
+        }
+    }
+
+    public List<PlayerData> FindPlayersInRoom(int roomId)
+    {
+        return FindRoomById(roomId).playersInRoom;
+    }
+
+    public void ClearState()
+    {
+        rooms.Clear();
     }
 }

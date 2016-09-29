@@ -1,5 +1,7 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class Util
@@ -17,6 +19,24 @@ public class Util
         else if (p_color == MessageColor.YELLOW)
             return new Color(1f, 1f, 0.2f);
         return Color.white;
+    }
+
+    public static bool IsAddresValidIPV4(string address)
+    {
+        if (string.IsNullOrEmpty(address))
+        {
+            return false;
+        }
+
+        string[] splitValues = address.Split('.');
+        if (splitValues.Length != 4)
+        {
+            return false;
+        }
+
+        byte parsing;
+
+        return splitValues.All(r => byte.TryParse(r, out parsing));
     }
 
 }

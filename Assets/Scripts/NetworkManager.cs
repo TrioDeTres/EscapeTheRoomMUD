@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -6,30 +8,41 @@ namespace Assets.Scripts
 {
     public static class MessageConstants
     {
-        public static short MESSAGE = 1000;
-        public static short MOVE = 1001;
-        public static short PLAYER_NAME = 1002;
-        public static short PLAYER_ID = 1003;
-        public static short INITIALIZE_PLAYER_IN_ROOM = 1004;
-        public static short RECENT_JOINED_PLAYER = 1005;
+        public const short MESSAGE = 1000;
+        public const short MOVE = 1001;
+        public const short PLAYER_NAME = 1002;
+        public const short PLAYER_ID = 1003;
+        public const short INITIALIZE_PLAYER_IN_ROOM = 1004;
+        public const short RECENT_JOINED_PLAYER = 1005;
+        public const short JOIN_IN_LOBBY = 1006;
+        public const short PLAYER_READY = 1007;
     }
 
     public class NetworkManager : MonoBehaviour
     {
-        private static bool isServerStarted = false;
-        private static bool isClientConnected = false;
-        private static bool isPlayerNameReady = false;
+        private static bool isServerStarted;
+        private static bool isClientConnected;
+        private static bool isPlayerNameReady;
+        private static bool isPlayerInLobby;
 
-        private bool isActivePlayerSet = false;
+        private int gameAboutToStartCounter;
+        
+        private NetworkClient networkClient;
 
-        private static NetworkClient networkClient;
+        public Dictionary<int, NetworkConnection> connections;
 
         public PlayersManager playersManager;
         public RoomsManager roomsManager;
 
-        public void AskServerMoveToRoom(PlayerData p_playerData, CardinalPoint p_cardinalPoint)
+        public NetworkManager()
         {
-            NetworkDefaultMessage message = new NetworkDefaultMessage(new[] { p_playerData.id.ToString(), ((int)p_cardinalPoint).ToString() });
+            connections = new Dictionary<int, NetworkConnection>();
+            gameAboutToStartCounter = 5;
+        }
+
+        public void AskServerMoveToRoom(PlayerData playerData, CardinalPoint cardinalPoint)
+        {
+            NetworkDefaultMessage message = new NetworkDefaultMessage(new[] { playerData.id.ToString(), ((int) cardinalPoint).ToString() });
             SendMessageToServer(MessageConstants.MOVE, message);
         }
 
@@ -44,16 +57,26 @@ namespace Assets.Scripts
 
             if (roomsManager.CheckDirectionNotExists(playerData, cardinalPoint))
             {
-                clientConnection.Send(MessageConstants.MESSAGE, new NetworkDefaultMessage(new[] { playerData.id.ToString(), "There is nothing on this direction", "1" }));
+                
+                clientConnection.Send(MessageConstants.MESSAGE, new NetworkConsoleMessage(playerData.id, roomsManager.GetMessageWhenDirectionNotExists(), MessageColor.RED));
             }
             else if (roomsManager.CheckIfRoomIsLocked(playerData, cardinalPoint))
             {
-                clientConnection.Send(MessageConstants.MESSAGE, new NetworkDefaultMessage(new[] { playerData.id.ToString(), roomsManager.GetMessageWhenLocked(playerData, cardinalPoint), "1"}));
+                
+                clientConnection.Send(MessageConstants.MESSAGE, new NetworkConsoleMessage(playerData.id, roomsManager.GetMessageWhenLocked(playerData, cardinalPoint), MessageColor.RED));
             }
             else
             {
                 NetworkServer.SendToAll(MessageConstants.MOVE, new NetworkDefaultMessage(new[] { playerData.id.ToString(), ((int)cardinalPoint).ToString() }));
-                NetworkServer.SendToAll(MessageConstants.MESSAGE, new NetworkDefaultMessage(new[] { playerData.id.ToString(), "Player " + playerData.playerName + " moved.", "2" }));
+
+                // only send messages to player in same room
+                foreach (PlayerData playerInRoom in playerData.currentRoom.playersInRoom)
+                {
+                    if (connections.ContainsKey(playerInRoom.id))
+                    {
+                        connections[playerInRoom.id].Send(MessageConstants.MESSAGE, new NetworkConsoleMessage(playerData.id, roomsManager.GetMessageWhenMovedSuccessfully(playerData.playerName), MessageColor.LIGHT_BLUE));
+                    }
+                }
             }
         }
 
@@ -69,29 +92,23 @@ namespace Assets.Scripts
             roomsManager.MoveToRoom(playerData, cardinalPoint, playersManager.activePlayer.id == networkPlayerId);
         }
 
-        private void CreatePlayerAndUpdateRoomsOnClient(NetworkMessage message)
+        private void InitializePlayerOnClient(NetworkMessage message)
         {
-            NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
+            NetworkPlayerData playerDataMessage = message.ReadMessage<NetworkPlayerData>();
 
-            int networkPlayerId = int.Parse(defaultMessage.inputs[0]);
-            string playerName = defaultMessage.inputs[1];
-            int roomId = int.Parse(defaultMessage.inputs[2]);
+            Room room = roomsManager.FindRoomById(playerDataMessage.roomId);
 
-            Room room = roomsManager.FindRoomById(roomId);
+            PlayerData player = playersManager.CreatePlayer(playerDataMessage.id, playerDataMessage.name, room);
 
-            if (playersManager.FindPlayerById(networkPlayerId) == null) { 
-                PlayerData player = playersManager.CreatePlayer(networkPlayerId, playerName, room);
-
-                if (!isActivePlayerSet)
-                {
-                    playersManager.activePlayer = player;
-                    isActivePlayerSet = true;
-                }
-
-                room.playersInRoom.Add(player);
-
-                SendMessageToServer(MessageConstants.RECENT_JOINED_PLAYER, new NetworkPlayerData(player));
+            if (!playersManager.IsActivePlayerSet)
+            {
+                playersManager.activePlayer = player;
+                playersManager.IsActivePlayerSet = true;
             }
+
+            room.playersInRoom.Add(player);
+
+            SendMessageToServer(MessageConstants.RECENT_JOINED_PLAYER, new NetworkPlayerData(player));
         }
 
         private void UpdateRecentJoinedPlayerStateOnClient(NetworkMessage message)
@@ -109,6 +126,48 @@ namespace Assets.Scripts
                 }
             }
 
+            isPlayerInLobby = defaultMessage.isLobbyStillActive;
+
+            SendMessageToServer(MessageConstants.JOIN_IN_LOBBY, new NetworkPlayerData(playersManager.activePlayer));
+        }
+
+        private void PlayerInLobbyReadyOnclient(NetworkMessage message)
+        {
+            isPlayerInLobby = false;
+        }
+
+        private void ServerMessageOnClient(NetworkMessage message)
+        {
+            NetworkConsoleMessage networkConsoleMessage = message.ReadMessage<NetworkConsoleMessage>();
+
+            if (playersManager.activePlayer.id != networkConsoleMessage.playerId)
+            {
+                UIManager.CreateMessage(networkConsoleMessage.message, networkConsoleMessage.color);
+            }
+        }
+
+        private void ServerAskedPlayerNameOnClient(NetworkMessage message)
+        {
+            NetworkConsoleMessage defaultMessage = message.ReadMessage<NetworkConsoleMessage>();
+
+            UIManager.CreateMessage(defaultMessage.message, MessageColor.BLUE);
+        }
+
+        public void SendPlayerNameToServer(string playerName)
+        {
+            networkClient.Send(MessageConstants.PLAYER_NAME, new NetworkPlayerData { name = playerName });
+
+            isPlayerNameReady = true;
+        }
+
+        public void OnSendPlayerReadyToServer(PlayerData playerData)
+        {
+            networkClient.Send(MessageConstants.PLAYER_READY, new NetworkPlayerData(playerData));
+        }
+
+        public void SendMessageToPlayers(int activePlayerId, string message)
+        {
+            SendMessageToServer(MessageConstants.MESSAGE, new NetworkConsoleMessage(activePlayerId, message, MessageColor.WHITE));
         }
 
         public static bool IsLocalServerStarted()
@@ -126,115 +185,175 @@ namespace Assets.Scripts
             return isPlayerNameReady;
         }
 
-        public void ConnectToServer(string p_address, int p_port)
+        public static bool IsClientInLobby()
+        {
+            return isPlayerInLobby;
+        }
+
+        public void ConnectToServer(string address, int port)
         {
             networkClient = new NetworkClient();
 
-            networkClient.Connect(p_address, p_port);
+            networkClient.Connect(address, port);
 
             isClientConnected = true;
 
-            networkClient.RegisterHandler(MessageConstants.PLAYER_NAME, OnServerAskedPlayerName);
-            networkClient.RegisterHandler(MessageConstants.MESSAGE, OnServerMessage);
+            networkClient.RegisterHandler(MessageConstants.PLAYER_NAME, ServerAskedPlayerNameOnClient);
+            networkClient.RegisterHandler(MessageConstants.MESSAGE, ServerMessageOnClient);
             networkClient.RegisterHandler(MessageConstants.MOVE, MoveOnClient);
-            networkClient.RegisterHandler(MessageConstants.INITIALIZE_PLAYER_IN_ROOM, CreatePlayerAndUpdateRoomsOnClient);
+            networkClient.RegisterHandler(MessageConstants.INITIALIZE_PLAYER_IN_ROOM, InitializePlayerOnClient);
             networkClient.RegisterHandler(MessageConstants.RECENT_JOINED_PLAYER, UpdateRecentJoinedPlayerStateOnClient);
+            networkClient.RegisterHandler(MessageConstants.PLAYER_READY, PlayerInLobbyReadyOnclient);
         }
 
-        private void OnServerMessage(NetworkMessage message)
+        public void StartServer(int port)
         {
-            NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
+            NetworkServer.Listen(port);
 
-            int networkPlayerId = int.Parse(defaultMessage.inputs[0]);
+            isServerStarted = true;
 
-            if (playersManager.activePlayer.id != networkPlayerId)
-                UIManager.CreateMessage(defaultMessage.inputs[1], (MessageColor) int.Parse(defaultMessage.inputs[2]));
+            NetworkServer.RegisterHandler(MsgType.Connect, ClientConnectedOnServer);
+            NetworkServer.RegisterHandler(MessageConstants.MOVE, TryToMoveOnServer);
+            NetworkServer.RegisterHandler(MessageConstants.MESSAGE, ForwardClientMessageOnServer);
+            NetworkServer.RegisterHandler(MessageConstants.PLAYER_NAME, ClientInputUsernameOnServer);
+            NetworkServer.RegisterHandler(MessageConstants.RECENT_JOINED_PLAYER, ClientReadyOnServer);
+            NetworkServer.RegisterHandler(MessageConstants.JOIN_IN_LOBBY, PlayerJoinedInLobbyOnServer);
         }
 
-        private void OnServerAskedPlayerName(NetworkMessage message)
+        public void ClearClientState()
         {
-            NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
-
-            UIManager.CreateMessage(string.Join(". ", defaultMessage.inputs), MessageColor.LIGHT_BLUE);
+            isPlayerNameReady = false;
+            isClientConnected = false;
+            isPlayerInLobby = false;
         }
 
-        public static void SendPlayerNameToServer(string p_playerName)
+        public void ClearServerState()
         {
-            NetworkDefaultMessage responsePlayerNameMessage = new NetworkDefaultMessage(new[] { p_playerName });
-
-            networkClient.Send(MessageConstants.PLAYER_NAME, responsePlayerNameMessage);
-
-            isPlayerNameReady = true;
+            isServerStarted = false;
         }
 
         public void DisconnectPlayerFromServer()
         {
             networkClient.Disconnect();
 
-            isServerStarted = false;
-            isPlayerNameReady = false;
-            isClientConnected = false;
-            isActivePlayerSet = false;
+            ClearClientState();
+            playersManager.ClearState();
+            roomsManager.ClearState();
+
+            if (isServerStarted)
+            {
+                StopServer();
+            }
         }
 
-        public void SendMessageToServer(short p_messageType, MessageBase networkDefaultMessage)
+        public void SendMessageToServer(short messageType, MessageBase networkDefaultMessage)
         {
-            networkClient.Send(p_messageType, networkDefaultMessage);
-        }
-
-        public void StartServer(int p_port)
-        {
-            NetworkServer.Listen(p_port);
-
-            isServerStarted = true;
-
-            NetworkServer.RegisterHandler(MsgType.Connect, OnClientConnectToServer);
-            NetworkServer.RegisterHandler(MessageConstants.MOVE, TryToMoveOnServer);
-            NetworkServer.RegisterHandler(MessageConstants.PLAYER_NAME, OnClientInputUsername);
-            NetworkServer.RegisterHandler(MessageConstants.RECENT_JOINED_PLAYER, OnClientReady);
+            networkClient.Send(messageType, networkDefaultMessage);
         }
 
         public void StopServer()
         {
             NetworkServer.Shutdown();
+            ClearServerState();
         }
 
-        private void OnClientConnectToServer(NetworkMessage message)
+        private void ForwardClientMessageOnServer(NetworkMessage message)
         {
+            NetworkConsoleMessage consoleMessage = message.ReadMessage<NetworkConsoleMessage>();
+            NetworkServer.SendToAll(MessageConstants.MESSAGE, consoleMessage);
+        }
+
+        private void ClientConnectedOnServer(NetworkMessage message)
+        {
+            if (!playersManager.CanAddPlayerToGame())
+            {
+                UIManager.CreateMessage("Client " + message.conn.address + " tried to connect on server but it's full.", MessageColor.RED);
+                message.conn.Send(MessageConstants.MESSAGE, new NetworkConsoleMessage() { message = "Server says: Sorry, server is full. Try again later." });
+            }
+
             NetworkServer.SetClientReady(message.conn);
 
             UIManager.CreateMessage("Client " + message.conn.address + " connected to your server. Asking his name.", MessageColor.LIGHT_BLUE);
 
-            NetworkDefaultMessage askPlayernameMessage = new NetworkDefaultMessage(new[] { "What's your name?" });
-
-            message.conn.Send(MessageConstants.PLAYER_NAME, askPlayernameMessage);
+            message.conn.Send(MessageConstants.PLAYER_NAME, new NetworkConsoleMessage() { message = "Server says: What's your name?" });
         }
 
-        private void OnClientReady(NetworkMessage message)
+        private void PlayerJoinedInLobbyOnServer(NetworkMessage message)
         {
-            NetworkPlayerData defaultMessage = message.ReadMessage<NetworkPlayerData>();
+            NetworkPlayerData playerDataMessage = message.ReadMessage<NetworkPlayerData>();
 
-            int clientId = defaultMessage.id;
+            PlayerData playerData = playersManager.FindPlayerById(playerDataMessage.id);
+
+            LobbyManager lobbyManager = LobbyManager.Instance;
+
+            if (!lobbyManager.isLobbyActive) {
+                message.conn.Send(MessageConstants.PLAYER_READY, NetworkEmptyMessage.EMPTY);
+            }
+            else if (lobbyManager.PlayersWaiting.Count >= 2)
+            {
+                lobbyManager.ClearState();
+                
+                NetworkServer.SendToAll(MessageConstants.MESSAGE, new NetworkConsoleMessage(0, "Servers says: Enough players in lobby, game will start soon.", MessageColor.BLUE));
+
+                StartCoroutine(GameAboutToStartMessage());
+            }
+            else
+            {
+                LobbyManager.Instance.PlayersWaiting.Add(playerData);
+                message.conn.Send(MessageConstants.MESSAGE, new NetworkConsoleMessage(0, "Server says: Welcome to EscapeTheRoom lobby. Waiting for others players to start game. When prepared type 'ready'.", MessageColor.BLUE));
+            }
+        }
+
+        private IEnumerator GameAboutToStartMessage()
+        {
+            while (gameAboutToStartCounter != 0)
+            {
+                gameAboutToStartCounter -= 1;
+
+                NetworkServer.SendToAll(MessageConstants.MESSAGE, new NetworkConsoleMessage(0, "Server says: Game starting in " + gameAboutToStartCounter + " seconds.", MessageColor.BLUE));
+
+                yield return new WaitForSeconds(1.0f);
+            }
+
+            NetworkServer.SendToAll(MessageConstants.PLAYER_READY, NetworkEmptyMessage.EMPTY);
+            NetworkServer.SendToAll(MessageConstants.MESSAGE, new NetworkConsoleMessage(0, "Server says: GO!", MessageColor.BLUE));
+        }
+
+        private void ClientReadyOnServer(NetworkMessage message)
+        {
+            NetworkPlayerData playerDataMessage = message.ReadMessage<NetworkPlayerData>();
+
+            int clientId = playerDataMessage.id;
 
             NetworkPlayerData[] networkPlayers = playersManager.players
                                                                .FindAll(p => p.id != clientId)
                                                                .Select(pd => new NetworkPlayerData(pd))
                                                                .ToArray();
 
-            message.conn.Send(MessageConstants.RECENT_JOINED_PLAYER, new NetworkUpdateRecentJoinedPlayer(networkPlayers));
+            NetworkUpdateRecentJoinedPlayer updateRecentJoinedPlayerMessage = new NetworkUpdateRecentJoinedPlayer(networkPlayers)
+            {
+                isLobbyStillActive = LobbyManager.Instance.isLobbyActive
+            };
+
+            message.conn.Send(MessageConstants.RECENT_JOINED_PLAYER, updateRecentJoinedPlayerMessage);
         }
 
-        private void OnClientInputUsername(NetworkMessage message)
+        private void ClientInputUsernameOnServer(NetworkMessage message)
         {
-            NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
+            NetworkPlayerData playerDataMessage = message.ReadMessage<NetworkPlayerData>();
 
-            UIManager.CreateMessage("Client said his name is " + defaultMessage.inputs[0], MessageColor.LIGHT_BLUE);
+            UIManager.CreateMessage("Client said his name is " + playerDataMessage.name, MessageColor.LIGHT_BLUE);
 
-            // dinning room
-            int roomId = 0;
             int recentJoinedPlayerId = message.conn.connectionId;
 
-            NetworkServer.SendToAll(MessageConstants.INITIALIZE_PLAYER_IN_ROOM, new NetworkDefaultMessage(new[] { recentJoinedPlayerId.ToString(), defaultMessage.inputs[0], roomId.ToString() }));
+            Room room = roomsManager.PickRoomForPlayer(recentJoinedPlayerId);
+
+            playerDataMessage.id = recentJoinedPlayerId;
+            playerDataMessage.roomId = room.roomID;
+
+            connections.Add(recentJoinedPlayerId, message.conn);
+
+            NetworkServer.SendToAll(MessageConstants.INITIALIZE_PLAYER_IN_ROOM, playerDataMessage);
         }
     }
 }

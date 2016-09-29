@@ -1,21 +1,30 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using UnityEngine.Networking;
 
-[SerializeField]
 public class PlayersManager : MonoBehaviour
 {
     public PlayerData activePlayer;
-    public List<PlayerData> players = new List<PlayerData>();
+    public List<PlayerData> players;
 
-    public PlayerData CreatePlayer(int p_id, string p_name, Room p_currentRoom)
+    public bool IsActivePlayerSet { get; set; }
+
+    public PlayersManager()
     {
-        PlayerData player = new PlayerData();
+        players = new List<PlayerData>();
+        IsActivePlayerSet = false;
+    }
 
-        player.playerName = p_name;
-        player.id = p_id;
-        player.currentRoom = p_currentRoom;
-        player.inventory = new List<Item>();
+    public PlayerData CreatePlayer(int id, string name, Room currentRoom)
+    {
+        PlayerData player = new PlayerData
+        {
+            playerName = name,
+            id = id,
+            currentRoom = currentRoom,
+            inventory = new List<Item>()
+        };
 
         players.Add(player);
 
@@ -54,24 +63,30 @@ public class PlayersManager : MonoBehaviour
                 new List<string> { __inventoryText });
         }
     }
-    public PlayerData GetPlayerByName(string p_name)
+    public PlayerData GetPlayerByName(string name)
     {
-        for (int i = 0; i < players.Count; i++)
-            if (players[i].playerName == p_name)
-                return players[i];
-        return null;
+        return players.FirstOrDefault(t => t.playerName == name);
     }
 
-    public bool HasPlayerWithName(string p_name)
+    public bool HasPlayerWithName(string name)
     {
-        for (int i = 0; i < players.Count; i++)
-            if (players[i].playerName == p_name)
-                return true;
-        return false;
+        return players.Any(t => t.playerName == name);
     }
 
-    public PlayerData FindPlayerById(int p_playerId)
+    public PlayerData FindPlayerById(int playerId)
     {
-        return players.Find(p => p.id == p_playerId);
+        return players.Find(p => p.id == playerId);
+    }
+
+    public bool CanAddPlayerToGame()
+    {
+        return players.Count <= 4;
+    }
+
+    public void ClearState()
+    {
+        IsActivePlayerSet = false;
+        activePlayer = null;
+        players.Clear();
     }
 }

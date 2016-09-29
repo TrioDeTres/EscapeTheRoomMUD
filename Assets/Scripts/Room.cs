@@ -22,6 +22,12 @@ public class Room : MonoBehaviour
 
     [TextArea(10, 20)] public string    roomDescription;
 
+    public Room()
+    {
+        adjacentRooms = new List<RoomTransition>();
+        playersInRoom = new List<PlayerData>();
+    }
+
     public bool HasItem(string p_itemName)
     {
         for (int i = 0; i < items.Count; i++)

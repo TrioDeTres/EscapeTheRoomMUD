@@ -1,26 +1,29 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
-[System.Serializable]
+[Serializable]
 public class PlayerData
 {
     public int          id;
     public string       playerName;
     public List<Item>   inventory;
     public Room         currentRoom;
+    public bool         ready;
 
-    public bool HasItem(string p_itemName)
+    public PlayerData()
     {
-        for (int i = 0; i < inventory.Count; i++)
-            if (inventory[i].itemName.ToLower() == p_itemName)
-                return true;
-        return false;
+        this.ready = false;
+        this.inventory = new List<Item>();
     }
-    public Item GetItem(string p_itemName)
+
+    public bool HasItem(string itemName)
     {
-        for (int i = 0; i < inventory.Count; i++)
-            if (inventory[i].itemName.ToLower() == p_itemName)
-                return inventory[i];
-        return null;
+        return inventory.Any(t => t.itemName.ToLower() == itemName);
+    }
+
+    public Item GetItem(string itemName)
+    {
+        return inventory.FirstOrDefault(t => t.itemName.ToLower() == itemName);
     }
 }

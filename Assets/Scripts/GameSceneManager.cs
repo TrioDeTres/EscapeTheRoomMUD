@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using Assets.Scripts;
 using UnityEngine;
 
@@ -26,24 +27,36 @@ public class GameSceneManager : MonoBehaviour
         commandManager.OnTryToConnectOnServer += OnTryToConnectOnServer;
         commandManager.OnTryToStartServer += OnTryToSetupServer;
         commandManager.OnTryToStopServer += OnTryToStopServer;
+        commandManager.OnSendMessageToPlayers += OnSendMessageToPlayers;
+        commandManager.OnSendPlayerNameToServer += OnSendPlayerNameToServer;
 
         uiManager.OnExecuteMessage += commandManager.ParseMessage;
     }
 
-    private void OnTryToConnectOnServer(string p_address, int p_port, string p_playerName)
+    private void OnTryToConnectOnServer(string address, int port)
     {
-        networkManager.ConnectToServer(p_address, p_port);
+        networkManager.ConnectToServer(address, port);
     }
 
-    private void OnTryToSetupServer(int p_port)
+    private void OnTryToSetupServer(int port)
     {
-        networkManager.StartServer(p_port);
-        networkManager.ConnectToServer("127.0.0.1", p_port);
+        networkManager.StartServer(port);
+        networkManager.ConnectToServer(IPAddress.Loopback.ToString(), port);
     }
 
     private void OnTryToStopServer()
     {
         networkManager.StopServer();
+    }
+
+    private void OnSendMessageToPlayers(int activePlayerId, string message)
+    {
+        networkManager.SendMessageToPlayers(activePlayerId, message);
+    }
+
+    private void OnSendPlayerNameToServer(string name)
+    {
+        networkManager.SendPlayerNameToServer(name);
     }
 
     private void TryToUseSuitcase(string p_param)

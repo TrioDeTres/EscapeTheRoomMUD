@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using System.Net;
 using Assets.Scripts;
 
 public class CommandManager : MonoBehaviour
@@ -16,53 +17,73 @@ public class CommandManager : MonoBehaviour
     public event Action                         OnTryToLookRoom;
     public event Action<int>                    OnTryToStartServer;
     public event Action                         OnTryToStopServer;
-    public event Action<string, int, string>    OnTryToConnectOnServer;
+    public event Action<string, int>            OnTryToConnectOnServer;
     public event Action<string>                 OnTryToLookItem;
+    public event Action<int, string>            OnSendMessageToPlayers;
+    public event Action<string>                 OnSendPlayerNameToServer;
+
+    public PlayersManager playersManager;
 
     public void ParseMessage(string p_msg)
     {
         PlayCommand(p_msg.Split(' ').Select(w => w.Trim().ToLower()).ToList());        
     }
 
-    public void PlayCommand(List<string> p_params)
+    public void PlayCommand(List<string> args)
     {
-        if (p_params.Count == 0)
+        if (args.Count == 0)
             return;
 
+        string fullText = string.Join(" ", args.ToArray());
+
+        if (NetworkManager.IsClientInLobby())
+        {
+            UIManager.CreateMessage("You said: " + fullText, MessageColor.WHITE);
+            OnSendMessageToPlayers(playersManager.activePlayer.id, playersManager.activePlayer.playerName + " says: " + fullText);
+            return;
+        }
+
         // commands that partially affect network
-        switch (p_params[0])
+        switch (args[0])
         {
             case "connect":
             case "n":
+                const int defaultPort = 2300;
+
                 if (NetworkManager.IsClientConnected())
                 {
                     UIManager.CreateMessage("Client already connected.", MessageColor.RED);
                     return;
                 }
 
-                if (p_params.Count == 4)
+                if (args.Count == 3)
                 {
-                    OnTryToConnectOnServer(p_params[1], int.Parse(p_params[2]), p_params[3]);
+                    int port = defaultPort;
 
-                    if (NetworkManager.IsClientConnected())
-                        UIManager.CreateMessage("Connecting under local server on port " + p_params[2] + ".", MessageColor.YELLOW);
-                }
-                else if (p_params.Count == 2)
-                {
-                    OnTryToConnectOnServer("127.0.0.1", 2300, p_params[1]);
+                    if (!int.TryParse(args[2], out port) || !Util.IsAddresValidIPV4(args[1]))
+                    {
+                        UIManager.CreateMessage("Could not connect in server address " + args[1] + " on port " + args[2] + ".", MessageColor.RED);
+                        return;
+                    }
 
-                    if (NetworkManager.IsClientConnected())
-                        UIManager.CreateMessage("Connecting under local server on default port (2300).", MessageColor.YELLOW);
+                    OnTryToConnectOnServer(args[1], port);
+
+                    if (NetworkManager.IsClientConnected()) { 
+                        UIManager.CreateMessage("Connecting under local server on port " + args[2] + ".", MessageColor.YELLOW);
+                    }
+
+                    return;
                 }
                 else
                 {
-                    OnTryToConnectOnServer("127.0.0.1", 2300, null);
+                    OnTryToConnectOnServer(IPAddress.Loopback.ToString(), 2300);
 
                     if (NetworkManager.IsClientConnected())
                         UIManager.CreateMessage("Connecting under local server on default port (2300).", MessageColor.YELLOW);
+
+                    return;
                 }
 
-                return;
             case "start":
             case "t":
                 if (NetworkManager.IsLocalServerStarted())
@@ -71,12 +92,12 @@ public class CommandManager : MonoBehaviour
                     return;
                 }
 
-                if (p_params.Count == 2)
+                if (args.Count == 2)
                 {
-                    OnTryToStartServer(int.Parse(p_params[1]));
+                    OnTryToStartServer(int.Parse(args[1]));
 
                     if (NetworkManager.IsLocalServerStarted())
-                        UIManager.CreateMessage("You successfully started server on port " + p_params[1] + ".", MessageColor.YELLOW);
+                        UIManager.CreateMessage("You successfully started server on port " + args[1] + ".", MessageColor.YELLOW);
                 }
                 else
                 {
@@ -87,6 +108,7 @@ public class CommandManager : MonoBehaviour
                 }
 
                 return;
+
             case "stop":
             case "p":
                 if (NetworkManager.IsLocalServerStarted())
@@ -100,20 +122,23 @@ public class CommandManager : MonoBehaviour
                 }
 
                 return;
+
             case "help":
             case "h":
                 UIManager.CreateDefautMessage(DefaultMessageType.HELP_CMD_HELP_TEXT);
                 return;
+
             case "clear":
             case "c":
                 UIManager.ClearMessages();
                 return;
+
             case "look":
             case "l":
-                if (p_params.Count == 1 || p_params[1] == "room")
+                if (args.Count == 1 || args[1] == "room")
                     OnTryToLookRoom();
                 else
-                    OnTryToLookItem(p_params[1]);
+                    OnTryToLookItem(args[1]);
                 return;
         }
 
@@ -127,66 +152,66 @@ public class CommandManager : MonoBehaviour
         // complete handshake responding with player name
         if (!NetworkManager.IsPlayerNameReady())
         {
-            NetworkManager.SendPlayerNameToServer(p_params[0]);
+            OnSendPlayerNameToServer(args[0]);
             return;
         }
 
-        switch (p_params[0])
+        switch (args[0])
         {
             //--------------------
             //Room commands
             case "move":
             case "m":
-                if (p_params.Count == 1)
+                if (args.Count == 1)
                     UIManager.CreateDefautMessage(DefaultMessageType.WRONG_DIRECTION);
                 else
-                    MoveCommand(p_params[1]);
+                    MoveCommand(args[1]);
                 break;
             
             //--------------------
             //Items commands
             case "inventory":
             case "i":
-                if (p_params.Count == 1)
+                if (args.Count == 1)
                     OnTryToShowInventory("");
                 else
-                    OnTryToShowInventory(p_params[1]);
+                    OnTryToShowInventory(args[1]);
                 break;
             case "get":
             case "g":
-                if (p_params.Count == 1)
+                if (args.Count == 1)
                     UIManager.CreateMessage("This command requires an item name.", MessageColor.RED);
                 else
-                    OnTryToGetItem(p_params[1]);
+                    OnTryToGetItem(args[1]);
                 break;
             case "drop":
             case "d":
-                if (p_params.Count == 1)
+                if (args.Count == 1)
                     UIManager.CreateMessage("This command requires an item name.", MessageColor.RED);
                 else
-                    OnTryToDropItem(p_params[1]);
+                    OnTryToDropItem(args[1]);
                 break;
             case "use":
             case "u":
-                if (p_params.Count <= 2)
+                if (args.Count <= 2)
                     UIManager.CreateMessage("This command requires an item name and a target.", 
                         MessageColor.RED);
-                else if (p_params[1].ToLower() == "hole")
-                    OnTryToUseHole(p_params[2]);
-                else if (p_params[2].ToLower() == "suitcase")
-                    OnTryToUseSuitcase(p_params[1]);
+                else if (args[1].ToLower() == "hole")
+                    OnTryToUseHole(args[2]);
+                else if (args[2].ToLower() == "suitcase")
+                    OnTryToUseSuitcase(args[1]);
                 else
-                    OnTryToUseItem(p_params[1], p_params[2]);
+                    OnTryToUseItem(args[1], args[2]);
                 break;
             //--------------------
             //Chat commands
             case "say":
             case "s":
-                Debug.Log("Say something(p_params[1]) to all players");
+                Debug.Log("Say something(args[1]) to all players");
                 break;
             case "whisper":
             case "w":
-                Debug.Log("Whisper something(p_params[2]) to player (p_params[1])");
+                Debug.Log("Whisper something(args[2]) to player (args[1])");
                 break;
         }
     }
