@@ -62,14 +62,14 @@ public class CommandManager : MonoBehaviour
 
                     if (!int.TryParse(args[2], out port) || !Util.IsAddresValidIPV4(args[1]))
                     {
-                        UIManager.CreateMessage("Could not connect in server address " + args[1] + " on port " + args[2] + ".", MessageColor.RED);
+                        UIManager.CreateMessage("Could not connect in server " + args[1] + " on port " + args[2] + ".", MessageColor.RED);
                         return;
                     }
 
                     OnTryToConnectOnServer(args[1], port);
 
                     if (NetworkManager.IsClientConnected()) { 
-                        UIManager.CreateMessage("Connecting under local server on port " + args[2] + ".", MessageColor.YELLOW);
+                        UIManager.CreateMessage("Connecting to " + args[1] + " on port " + args[2] + ".", MessageColor.YELLOW);
                     }
 
                     return;
