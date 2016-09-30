@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class LobbyManager
@@ -30,6 +31,11 @@ public class LobbyManager
 
             return instance;
         }
+    }
+
+    public bool IsEveryoneReady()
+    {
+        return !isLobbyActive || PlayersWaiting.All(playerData => playerData.ready) && PlayersWaiting.Count >= 2;
     }
 
     public void ClearState()

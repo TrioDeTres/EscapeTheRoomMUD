@@ -76,10 +76,14 @@ public class NetworkManager : MonoBehaviour
             // only send messages to player in same room
             foreach (PlayerData playerInRoom in playerData.currentRoom.playersInRoom)
             {
-                if (connections.ContainsKey(playerInRoom.id))
-                {
-                    connections[playerInRoom.id].Send(MessageConstants.MESSAGE, new NetworkConsoleMessage(playerData.id, roomsManager.GetMessageWhenMovedSuccessfully(playerData.playerName), MessageColor.LIGHT_BLUE));
-                }
+                if (playerInRoom.id == 0) continue;
+                NetworkServer.SendToClient(playerInRoom.id, MessageConstants.MESSAGE, new NetworkConsoleMessage(playerData.id, roomsManager.GetMessageWhenMovedOutSuccessfully(playerData.playerName), MessageColor.LIGHT_BLUE));
+            }
+
+            foreach (PlayerData playerInRoom in roomsManager.FindRoomInDirection(playerData, cardinalPoint).playersInRoom)
+            {
+                if (playerInRoom.id == 0) continue;
+                NetworkServer.SendToClient(playerInRoom.id, MessageConstants.MESSAGE, new NetworkConsoleMessage(playerData.id, roomsManager.GetMessageWhenMovedInSuccessfully(playerData.playerName), MessageColor.LIGHT_BLUE));
             }
         }
     }
@@ -107,7 +111,6 @@ public class NetworkManager : MonoBehaviour
         PlayerData __playerData = playersManager.FindPlayerById(int.Parse(defaultMessage.inputs[0]));
         string __itemName = defaultMessage.inputs[1];
 
-        NetworkConnection clientConnection = message.conn;
         //If room have item
         if (__playerData.currentRoom.HasItem(__itemName))
         {
@@ -118,29 +121,31 @@ public class NetworkManager : MonoBehaviour
                 //Only send messages to player in same room
                 foreach (PlayerData playerInRoom in __playerData.currentRoom.playersInRoom)
                 {
-                    if (connections.ContainsKey(playerInRoom.id))
-                        connections[playerInRoom.id].Send(MessageConstants.MESSAGE,
-                        new NetworkConsoleMessage(__playerData.id,
-                        itemsManager.GetMessageWhenSomeonePickedItem(__playerData.playerName, __item.GetFullName()),
-                        MessageColor.LIGHT_BLUE));
+                    if (playerInRoom.id == 0) continue;
+                    NetworkServer.SendToClient(playerInRoom.id, 
+                                                MessageConstants.MESSAGE, 
+                                                new NetworkConsoleMessage(__playerData.id, 
+                                                                            itemsManager.GetMessageWhenSomeonePickedItem(__playerData.playerName, 
+                                                                                                                        __item.GetFullName()), 
+                                                MessageColor.LIGHT_BLUE));
                 }
             }
             //Item not pickable
             else
             {
-                clientConnection.Send(MessageConstants.MESSAGE,
-                    new NetworkConsoleMessage(__playerData.id,
-                    itemsManager.GetMessageWhenItemCantBePicked(),
-                    MessageColor.RED));
+                NetworkServer.SendToClient(__playerData.id, 
+                                           MessageConstants.MESSAGE,
+                                           new NetworkConsoleMessage(__playerData.id, itemsManager.GetMessageWhenItemCantBePicked(),
+                                           MessageColor.RED));
             }
         }
         //Room don't have item
         else
         {
-            clientConnection.Send(MessageConstants.MESSAGE, 
-                new NetworkConsoleMessage(__playerData.id, 
-                roomsManager.GetMessageWhenRoomDontHaveItem(), 
-                MessageColor.RED));
+            NetworkServer.SendToClient(__playerData.id, 
+                                       MessageConstants.MESSAGE, 
+                                       new NetworkConsoleMessage(__playerData.id,  roomsManager.GetMessageWhenRoomDontHaveItem(), 
+                                       MessageColor.RED));
         }
     }
     private void GetItemOnClient(NetworkMessage message)
@@ -168,7 +173,6 @@ public class NetworkManager : MonoBehaviour
     private void TryToDropItemOnServer(NetworkMessage message)
     {
         NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
-        NetworkConnection clientConnection = message.conn;
         
         PlayerData __playerData = playersManager.FindPlayerById(int.Parse(defaultMessage.inputs[0]));
         string __itemName = defaultMessage.inputs[1];
@@ -181,19 +185,20 @@ public class NetworkManager : MonoBehaviour
             //Only send messages to player in same room
             foreach (PlayerData playerInRoom in __playerData.currentRoom.playersInRoom)
             {
-                if (connections.ContainsKey(playerInRoom.id))
-                    connections[playerInRoom.id].Send(MessageConstants.MESSAGE,
-                        new NetworkConsoleMessage(__playerData.id,
-                         itemsManager.GetMessageWhenSomeoneDroppedItem(__playerData.playerName, __item.GetFullName()),
-                        MessageColor.LIGHT_BLUE));
+                if (playerInRoom.id == 0) continue;
+                NetworkServer.SendToClient(playerInRoom.id, 
+                                            MessageConstants.MESSAGE, 
+                                            new NetworkConsoleMessage(__playerData.id, itemsManager.GetMessageWhenSomeoneDroppedItem(__playerData.playerName, 
+                                                                                                                                    __item.GetFullName()),
+                                            MessageColor.LIGHT_BLUE));
             }
         }
         //Player don't have item
         else
-            clientConnection.Send(MessageConstants.MESSAGE,
-                new NetworkConsoleMessage(__playerData.id,
-                playersManager.GetMessageWhenPlayerDontHaveItem(),
-                MessageColor.RED));
+            NetworkServer.SendToClient(__playerData.id, 
+                                       MessageConstants.MESSAGE,
+                                       new NetworkConsoleMessage(__playerData.id, playersManager.GetMessageWhenPlayerDontHaveItem(),
+                                       MessageColor.RED));
     }
     private void DropItemOnClient(NetworkMessage message)
     {
@@ -253,9 +258,15 @@ public class NetworkManager : MonoBehaviour
         SendMessageToServer(MessageConstants.JOIN_IN_LOBBY, new NetworkPlayerData(playersManager.activePlayer));
     }
 
-    private void PlayerInLobbyReadyOnclient(NetworkMessage message)
+    private void PlayerInLobbyOnclient(NetworkMessage message)
+    {
+        isPlayerInLobby = true;
+    }
+
+    private void PlayerReadyOnclient(NetworkMessage message)
     {
         isPlayerInLobby = false;
+        playersManager.activePlayer.ready = true;
     }
 
     private void ServerMessageOnClient(NetworkMessage message)
@@ -282,7 +293,7 @@ public class NetworkManager : MonoBehaviour
         isPlayerNameReady = true;
     }
 
-    public void OnSendPlayerReadyToServer(PlayerData playerData)
+    public void SendPlayerReadyToServer(PlayerData playerData)
     {
         networkClient.Send(MessageConstants.PLAYER_READY, new NetworkPlayerData(playerData));
     }
@@ -325,7 +336,8 @@ public class NetworkManager : MonoBehaviour
         networkClient.RegisterHandler(MessageConstants.MOVE, MoveOnClient);
         networkClient.RegisterHandler(MessageConstants.INITIALIZE_PLAYER_IN_ROOM, InitializePlayerOnClient);
         networkClient.RegisterHandler(MessageConstants.RECENT_JOINED_PLAYER, UpdateRecentJoinedPlayerStateOnClient);
-        networkClient.RegisterHandler(MessageConstants.PLAYER_READY, PlayerInLobbyReadyOnclient);
+        networkClient.RegisterHandler(MessageConstants.JOIN_IN_LOBBY, PlayerInLobbyOnclient);
+        networkClient.RegisterHandler(MessageConstants.PLAYER_READY, PlayerReadyOnclient);
         networkClient.RegisterHandler(MessageConstants.GET, GetItemOnClient);
         networkClient.RegisterHandler(MessageConstants.DROP, DropItemOnClient);
     }
@@ -342,6 +354,7 @@ public class NetworkManager : MonoBehaviour
         NetworkServer.RegisterHandler(MessageConstants.PLAYER_NAME, ClientInputUsernameOnServer);
         NetworkServer.RegisterHandler(MessageConstants.RECENT_JOINED_PLAYER, ClientReadyOnServer);
         NetworkServer.RegisterHandler(MessageConstants.JOIN_IN_LOBBY, PlayerJoinedInLobbyOnServer);
+        NetworkServer.RegisterHandler(MessageConstants.PLAYER_READY, PlayerReadyOnServer);
         NetworkServer.RegisterHandler(MessageConstants.GET, TryToGetItemOnServer);
         NetworkServer.RegisterHandler(MessageConstants.DROP, TryToDropItemOnServer);
     }
@@ -405,29 +418,43 @@ public class NetworkManager : MonoBehaviour
         NetworkServer.SendToClient(message.conn.connectionId, MessageConstants.PLAYER_NAME, new NetworkConsoleMessage() { message = "Server says: What's your name?" });
     }
 
+    private void PlayerReadyOnServer(NetworkMessage message)
+    {
+        NetworkPlayerData playerDataMessage = message.ReadMessage<NetworkPlayerData>();
+
+        PlayerData playerData = playersManager.FindPlayerById(playerDataMessage.id);
+
+        playerData.ready = true;
+
+        LobbyManager lobbyManager = LobbyManager.Instance;
+
+        if (lobbyManager.IsEveryoneReady())
+        {
+            lobbyManager.ClearState();
+
+            NetworkServer.SendToAll(MessageConstants.MESSAGE, new NetworkConsoleMessage(0, "Servers says: Enough players in lobby, game will start soon.", MessageColor.BLUE));
+
+            StartCoroutine(GameAboutToStartMessage());
+        }
+
+        NetworkServer.SendToAll(MessageConstants.MESSAGE, new NetworkConsoleMessage(0, "Servers says: " + playerData.playerName + " is ready.", MessageColor.BLUE));
+    }
+
     private void PlayerJoinedInLobbyOnServer(NetworkMessage message)
     {
         NetworkPlayerData playerDataMessage = message.ReadMessage<NetworkPlayerData>();
 
         PlayerData playerData = playersManager.FindPlayerById(playerDataMessage.id);
 
-        LobbyManager lobbyManager = LobbyManager.Instance;
-
-        if (!lobbyManager.isLobbyActive) {
-           NetworkServer.SendToClient(playerData.id, MessageConstants.PLAYER_READY, NetworkEmptyMessage.EMPTY);
-        }
-        else if (lobbyManager.PlayersWaiting.Count >= 1)
-        {
-            lobbyManager.ClearState();
-                
-            NetworkServer.SendToAll(MessageConstants.MESSAGE, new NetworkConsoleMessage(0, "Servers says: Enough players in lobby, game will start soon.", MessageColor.BLUE));
-
-            StartCoroutine(GameAboutToStartMessage());
+        if (!LobbyManager.Instance.isLobbyActive) {
+            NetworkServer.SendToClient(playerData.id, MessageConstants.MESSAGE, new NetworkConsoleMessage(0, "Server says: Game already started, have fun!", MessageColor.BLUE));
+            NetworkServer.SendToClient(playerData.id, MessageConstants.PLAYER_READY, NetworkEmptyMessage.EMPTY);
         }
         else
         {
             LobbyManager.Instance.PlayersWaiting.Add(playerData);
-            NetworkServer.SendToClient(playerData.id, MessageConstants.MESSAGE, new NetworkConsoleMessage(0, "Server says: Welcome to EscapeTheRoom lobby. Waiting for others players to start game. When prepared type 'ready'.", MessageColor.BLUE));
+            NetworkServer.SendToClient(playerData.id, MessageConstants.JOIN_IN_LOBBY, NetworkEmptyMessage.EMPTY);
+            NetworkServer.SendToClient(playerData.id, MessageConstants.MESSAGE, new NetworkConsoleMessage(0, "Server says: Welcome to EscapeTheRoom lobby. Waiting for others players to start game. When prepared type 'ready' or 'r'.", MessageColor.BLUE));
         }
     }
 

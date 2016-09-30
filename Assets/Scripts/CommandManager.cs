@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using System.Net;
-using UnityEngine.Networking;
 
 public class CommandManager : MonoBehaviour
 {
@@ -21,6 +20,7 @@ public class CommandManager : MonoBehaviour
     public event Action<string>                 OnTryToLookItem;
     public event Action<int, string>            OnSendMessageToPlayers;
     public event Action<string>                 OnSendPlayerNameToServer;
+    public event Action                         OnSendPlayerReadyToServer;
 
     public PlayersManager playersManager;
 
@@ -34,10 +34,16 @@ public class CommandManager : MonoBehaviour
         if (args.Count == 0)
             return;
 
-        string fullText = string.Join(" ", args.ToArray());
-
-        if (NetworkManager.IsClientInLobby() && NetworkManager.IsPlayerNameReady())
+        if (!NetworkManager.IsPlayerNameReady() && (string.Equals("ready", args[0]) || string.Equals("r", args[0])))
         {
+            UIManager.CreateMessage("Server says: Choose a different name.", MessageColor.WHITE);
+            return;
+        }
+
+        if (NetworkManager.IsClientInLobby() && NetworkManager.IsPlayerNameReady() && !string.Equals("ready", args[0]) && !string.Equals("r", args[0]))
+        {
+            string fullText = string.Join(" ", args.ToArray());
+
             UIManager.CreateMessage("You said: " + fullText, MessageColor.WHITE);
             OnSendMessageToPlayers(playersManager.activePlayer.id, playersManager.activePlayer.playerName + " says: " + fullText);
             return;
@@ -46,6 +52,11 @@ public class CommandManager : MonoBehaviour
         // commands that partially affect network
         switch (args[0])
         {
+            case "ready":
+            case "r":
+                OnSendPlayerReadyToServer();
+                break;
+
             case "connect":
             case "n":
                 const int defaultPort = 2300;

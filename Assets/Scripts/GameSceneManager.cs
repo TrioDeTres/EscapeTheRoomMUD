@@ -28,6 +28,7 @@ public class GameSceneManager : MonoBehaviour
         commandManager.OnTryToStopServer += OnTryToStopServer;
         commandManager.OnSendMessageToPlayers += OnSendMessageToPlayers;
         commandManager.OnSendPlayerNameToServer += OnSendPlayerNameToServer;
+        commandManager.OnSendPlayerReadyToServer += OnSendPlayerReadyToServer;
 
         uiManager.OnExecuteMessage += commandManager.ParseMessage;
     }
@@ -56,6 +57,11 @@ public class GameSceneManager : MonoBehaviour
     private void OnSendPlayerNameToServer(string name)
     {
         networkManager.SendPlayerNameToServer(name);
+    }
+
+    private void OnSendPlayerReadyToServer()
+    {
+        networkManager.SendPlayerReadyToServer(playersManager.activePlayer);
     }
 
     private void TryToUseSuitcase(string p_param)

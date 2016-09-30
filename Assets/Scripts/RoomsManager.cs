@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class RoomsManager : MonoBehaviour
@@ -8,7 +9,7 @@ public class RoomsManager : MonoBehaviour
 
     public bool CheckDirectionNotExists(PlayerData p_player, CardinalPoint p_direction)
     {
-        return p_player.currentRoom.adjacentRooms[(int)p_direction].targetRoom == null;
+        return FindRoomInDirection(p_player, p_direction) == null;
     }
 
     public bool CheckIfRoomIsLocked(PlayerData p_player, CardinalPoint p_direction)
@@ -29,9 +30,14 @@ public class RoomsManager : MonoBehaviour
         return "Server says: " + p_player.currentRoom.adjacentRooms[(int)p_direction].messageWhenLocked;
     }
 
-    public string GetMessageWhenMovedSuccessfully(string playerName)
+    public string GetMessageWhenMovedOutSuccessfully(string playerName)
     {
         return "Server says: " + playerName + " has left room.";
+    }
+
+    public string GetMessageWhenMovedInSuccessfully(string playerName)
+    {
+        return "Server says: " + playerName + " has joined in the room.";
     }
 
     public void MoveToRoom(PlayerData p_player, CardinalPoint p_direction, bool p_localPlayer)
@@ -41,8 +47,11 @@ public class RoomsManager : MonoBehaviour
         p_player.currentRoom = p_player.currentRoom.adjacentRooms[(int)p_direction].targetRoom;
         p_player.currentRoom.playersInRoom.Add(p_player);
 
-        if (p_localPlayer) { 
-            UIManager.CreateMessage("Server says: You moved " + p_direction.ToString().ToLower() + ". You are now at the " + p_player.currentRoom.roomFullName + ".", MessageColor.LIGHT_BLUE);
+        if (p_localPlayer)
+        {
+            List<PlayerData> playersInRoom = p_player.currentRoom.playersInRoom.FindAll(p => p.id != p_player.id);
+            string playersInRoomMessage = playersInRoom.Count > 0 ?  "You can see players" + string.Join(" ", playersInRoom.Select(p => p.playerName).ToArray()) + "." : String.Empty;
+            UIManager.CreateMessage("Server says: You moved " + p_direction.ToString().ToLower() + ". You are now at the " + p_player.currentRoom.roomFullName + "." + playersInRoomMessage, MessageColor.LIGHT_BLUE);
         }
     }
 
@@ -66,6 +75,11 @@ public class RoomsManager : MonoBehaviour
     public Room FindRoomById(int p_roomId)
     {
         return rooms.Find(r => r.roomID == p_roomId);
+    }
+
+    public Room FindRoomInDirection(PlayerData playerData, CardinalPoint cardinalPoint)
+    {
+        return playerData.currentRoom.adjacentRooms[(int) cardinalPoint].targetRoom;
     }
 
     public Room PickRoomForPlayer(int playerId)
