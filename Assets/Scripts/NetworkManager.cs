@@ -219,7 +219,7 @@ public class NetworkManager : MonoBehaviour
 
         PlayerData player = playersManager.CreatePlayer(playerDataMessage.id, playerDataMessage.name, room);
 
-        if (!playersManager.IsActivePlayerSet)
+        if (!playersManager.IsActivePlayerSet && isPlayerNameReady)
         {
             playersManager.activePlayer = player;
             playersManager.IsActivePlayerSet = true;
@@ -227,7 +227,10 @@ public class NetworkManager : MonoBehaviour
 
         room.playersInRoom.Add(player);
 
-        SendMessageToServer(MessageConstants.RECENT_JOINED_PLAYER, new NetworkPlayerData(player));
+        if (playersManager.activePlayer.id == playerDataMessage.id)
+        {
+            SendMessageToServer(MessageConstants.RECENT_JOINED_PLAYER, new NetworkPlayerData(player));
+        }
     }
 
     private void UpdateRecentJoinedPlayerStateOnClient(NetworkMessage message)
@@ -391,14 +394,15 @@ public class NetworkManager : MonoBehaviour
         if (!playersManager.CanAddPlayerToGame())
         {
             UIManager.CreateMessage("Client " + message.conn.address + " tried to connect on server but it's full.", MessageColor.RED);
-            message.conn.Send(MessageConstants.MESSAGE, new NetworkConsoleMessage() { message = "Server says: Sorry, server is full. Try again later." });
+            NetworkServer.SendToClient(message.conn.connectionId, MessageConstants.MESSAGE, new NetworkConsoleMessage() { message = "Server says: Sorry, server is full. Try again later." });
+            message.conn.Disconnect();
         }
 
         NetworkServer.SetClientReady(message.conn);
 
         UIManager.CreateMessage("Client " + message.conn.address + " connected to your server. Asking his name.", MessageColor.LIGHT_BLUE);
 
-        message.conn.Send(MessageConstants.PLAYER_NAME, new NetworkConsoleMessage() { message = "Server says: What's your name?" });
+        NetworkServer.SendToClient(message.conn.connectionId, MessageConstants.PLAYER_NAME, new NetworkConsoleMessage() { message = "Server says: What's your name?" });
     }
 
     private void PlayerJoinedInLobbyOnServer(NetworkMessage message)
@@ -410,9 +414,9 @@ public class NetworkManager : MonoBehaviour
         LobbyManager lobbyManager = LobbyManager.Instance;
 
         if (!lobbyManager.isLobbyActive) {
-            message.conn.Send(MessageConstants.PLAYER_READY, NetworkEmptyMessage.EMPTY);
+           NetworkServer.SendToClient(playerData.id, MessageConstants.PLAYER_READY, NetworkEmptyMessage.EMPTY);
         }
-        else if (lobbyManager.PlayersWaiting.Count >= 2)
+        else if (lobbyManager.PlayersWaiting.Count >= 1)
         {
             lobbyManager.ClearState();
                 
@@ -423,7 +427,7 @@ public class NetworkManager : MonoBehaviour
         else
         {
             LobbyManager.Instance.PlayersWaiting.Add(playerData);
-            message.conn.Send(MessageConstants.MESSAGE, new NetworkConsoleMessage(0, "Server says: Welcome to EscapeTheRoom lobby. Waiting for others players to start game. When prepared type 'ready'.", MessageColor.BLUE));
+            NetworkServer.SendToClient(playerData.id, MessageConstants.MESSAGE, new NetworkConsoleMessage(0, "Server says: Welcome to EscapeTheRoom lobby. Waiting for others players to start game. When prepared type 'ready'.", MessageColor.BLUE));
         }
     }
 
@@ -458,7 +462,7 @@ public class NetworkManager : MonoBehaviour
             isLobbyStillActive = LobbyManager.Instance.isLobbyActive
         };
 
-        message.conn.Send(MessageConstants.RECENT_JOINED_PLAYER, updateRecentJoinedPlayerMessage);
+        NetworkServer.SendToClient(clientId, MessageConstants.RECENT_JOINED_PLAYER, updateRecentJoinedPlayerMessage);
     }
 
     private void ClientInputUsernameOnServer(NetworkMessage message)

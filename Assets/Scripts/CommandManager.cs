@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using System.Net;
+using UnityEngine.Networking;
 
 public class CommandManager : MonoBehaviour
 {
@@ -35,7 +36,7 @@ public class CommandManager : MonoBehaviour
 
         string fullText = string.Join(" ", args.ToArray());
 
-        if (NetworkManager.IsClientInLobby())
+        if (NetworkManager.IsClientInLobby() && NetworkManager.IsPlayerNameReady())
         {
             UIManager.CreateMessage("You said: " + fullText, MessageColor.WHITE);
             OnSendMessageToPlayers(playersManager.activePlayer.id, playersManager.activePlayer.playerName + " says: " + fullText);
@@ -146,6 +147,7 @@ public class CommandManager : MonoBehaviour
             OnSendPlayerNameToServer(args[0]);
             return;
         }
+
         switch (args[0])
         {
             case "look":
