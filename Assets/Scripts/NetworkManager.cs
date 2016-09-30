@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -17,10 +18,18 @@ public static class MessageConstants
     public const short PLAYER_READY = 1007;
     public const short GET = 1008;
     public const short DROP = 1009;
+    public const short USE = 1010;
+    public const short USE_SUITCASE = 1011;
+    public const short USE_HOLE = 1012;
+    public const short SAY = 1013;
+    public const short WHISPER = 1014;
 }
 
 public class NetworkManager : MonoBehaviour
 {
+    public event Action<int> OnSuitcaseOpened;
+    public event Action<int, string, string> OnPlayInteraction;
+
     private static bool isServerStarted;
     private static bool isClientConnected;
     private static bool isPlayerNameReady;
@@ -76,9 +85,19 @@ public class NetworkManager : MonoBehaviour
             // only send messages to player in same room
             foreach (PlayerData playerInRoom in playerData.currentRoom.playersInRoom)
             {
-                if (connections.ContainsKey(playerInRoom.id))
+                if (connections.ContainsKey(playerInRoom.id) && playerInRoom.id != playerData.id)
                 {
                     connections[playerInRoom.id].Send(MessageConstants.MESSAGE, new NetworkConsoleMessage(playerData.id, roomsManager.GetMessageWhenMovedSuccessfully(playerData.playerName), MessageColor.LIGHT_BLUE));
+                }
+            }
+            // only send messages to player in the target room
+            foreach (PlayerData playerInRoom in playerData.currentRoom.
+                adjacentRooms[(int)cardinalPoint].targetRoom.playersInRoom)
+            {
+                if (connections.ContainsKey(playerInRoom.id) && playerInRoom.id != playerData.id)
+                {
+                    connections[playerInRoom.id].Send(MessageConstants.MESSAGE, new NetworkConsoleMessage(playerData.id, 
+                        "Server says: " + playerData.playerName + " has joined the room.", MessageColor.LIGHT_BLUE));
                 }
             }
         }
@@ -118,7 +137,7 @@ public class NetworkManager : MonoBehaviour
                 //Only send messages to player in same room
                 foreach (PlayerData playerInRoom in __playerData.currentRoom.playersInRoom)
                 {
-                    if (connections.ContainsKey(playerInRoom.id))
+                    if (connections.ContainsKey(playerInRoom.id) && playerInRoom.id != __playerData.id)
                         connections[playerInRoom.id].Send(MessageConstants.MESSAGE,
                         new NetworkConsoleMessage(__playerData.id,
                         itemsManager.GetMessageWhenSomeonePickedItem(__playerData.playerName, __item.GetFullName()),
@@ -181,7 +200,7 @@ public class NetworkManager : MonoBehaviour
             //Only send messages to player in same room
             foreach (PlayerData playerInRoom in __playerData.currentRoom.playersInRoom)
             {
-                if (connections.ContainsKey(playerInRoom.id))
+                if (connections.ContainsKey(playerInRoom.id) && playerInRoom.id != __playerData.id)
                     connections[playerInRoom.id].Send(MessageConstants.MESSAGE,
                         new NetworkConsoleMessage(__playerData.id,
                          itemsManager.GetMessageWhenSomeoneDroppedItem(__playerData.playerName, __item.GetFullName()),
@@ -209,6 +228,204 @@ public class NetworkManager : MonoBehaviour
         if (playersManager.activePlayer.id == networkPlayerId)
             UIManager.CreateDefautMessage(DefaultMessageType.DROP_ITEM,
                 new List<string> { __item.GetFullName() });
+    }
+    ///////////////////////////////////
+    // USE command
+    public void AskServerToUseItem(PlayerData p_playerData, string p_source, string p_target)
+    {
+        NetworkDefaultMessage message = new NetworkDefaultMessage(new[] { p_playerData.id.ToString(), p_source, p_target});
+        SendMessageToServer(MessageConstants.USE, message);
+    }
+    private void TryToUseItemOnServer(NetworkMessage message)
+    {
+        NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
+        NetworkConnection clientConnection = message.conn;
+
+        PlayerData __playerData = playersManager.FindPlayerById(int.Parse(defaultMessage.inputs[0]));
+        string __sourceName = defaultMessage.inputs[1];
+        string __targetName = defaultMessage.inputs[2];
+        //Player don't have the item
+        if (!__playerData.HasItem(__sourceName))
+        {
+            clientConnection.Send(MessageConstants.MESSAGE,
+                new NetworkConsoleMessage(__playerData.id,
+                playersManager.GetMessageWhenPlayerDontHaveItem(),
+                MessageColor.RED));
+        }
+        //There is no target item on the room
+        else if (!__playerData.currentRoom.HasItem(__targetName))
+        {
+            clientConnection.Send(MessageConstants.MESSAGE,
+                new NetworkConsoleMessage(__playerData.id,
+                roomsManager.GetMessageWhenRoomDontHaveTargetItem(),
+                MessageColor.RED));
+        }
+        //The items exist
+        else
+        {
+            Item __source = __playerData.GetItem(__sourceName);
+            Item __target = __playerData.currentRoom.GetItem(__targetName);
+
+            //Source can't be used
+            if (!__source.isUsable)
+                clientConnection.Send(MessageConstants.MESSAGE,
+                    new NetworkConsoleMessage(__playerData.id,
+                    itemsManager.GetMessageWhenItemCantBeUsed(),
+                    MessageColor.RED));
+            //No interaction between items
+            else if (!__target.HasInteractionWithItem(__source))
+                clientConnection.Send(MessageConstants.MESSAGE,
+                    new NetworkConsoleMessage(__playerData.id,
+                    itemsManager.GetMessageWhenNoInteraction(),
+                    MessageColor.RED));
+            //Interaction not active
+            else if (!__target.GetInteraction(__source).active)
+                clientConnection.Send(MessageConstants.MESSAGE,
+                    new NetworkConsoleMessage(__playerData.id,
+                    itemsManager.GetMessageWhenInteractionNotActive(),
+                    MessageColor.RED));
+            else
+            {
+                NetworkServer.SendToAll(MessageConstants.USE, new NetworkDefaultMessage(new[] { __playerData.id.ToString(), __sourceName, __targetName }));
+                //Only send messages to player in same room
+                foreach (PlayerData playerInRoom in __playerData.currentRoom.playersInRoom)
+                {
+                    if (connections.ContainsKey(playerInRoom.id) && playerInRoom.id != __playerData.id)
+                        connections[playerInRoom.id].Send(MessageConstants.MESSAGE,
+                            new NetworkConsoleMessage(__playerData.id,
+                            itemsManager.GetMessageWhenSomeoneUsedItem(playerInRoom.playerName, __sourceName, __targetName),
+                            MessageColor.LIGHT_BLUE));
+                }
+            }
+        }
+    }
+    private void UseItemOnClient(NetworkMessage message)
+    {
+        NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
+        int networkPlayerId = int.Parse(defaultMessage.inputs[0]);
+        OnPlayInteraction(networkPlayerId, defaultMessage.inputs[1], defaultMessage.inputs[2]);
+    }
+    ///////////////////////////////////
+    // USE_SUITCASE command
+    public void AskServerToUseSuitcase(PlayerData p_playerData, string p_password)
+    {
+        NetworkDefaultMessage message = new NetworkDefaultMessage(new[] { p_playerData.id.ToString(), p_password });
+        SendMessageToServer(MessageConstants.USE_SUITCASE, message);
+    }
+    private void TryToUseSuitcaseOnServer(NetworkMessage message)
+    {
+        NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
+        NetworkConnection clientConnection = message.conn;
+
+        PlayerData __playerData = playersManager.FindPlayerById(int.Parse(defaultMessage.inputs[0]));
+        string __password = defaultMessage.inputs[1];
+        int __result = 0;
+
+        //Player is not on the Office
+        if (__playerData.currentRoom != roomsManager.rooms[1])
+        {
+            clientConnection.Send(MessageConstants.MESSAGE,
+                new NetworkConsoleMessage(__playerData.id,
+                itemsManager.GetMessageWhenItemNotFound(),
+                MessageColor.RED));
+        }
+        //Valid password
+        else if (int.TryParse(__password, out __result))
+        {
+            //Right password
+            if (__result == 123456)
+            {
+                NetworkServer.SendToAll(MessageConstants.USE_SUITCASE, new NetworkDefaultMessage(new[] { __playerData.id.ToString() }));
+                //Only send messages to player in same room
+                foreach (PlayerData playerInRoom in __playerData.currentRoom.playersInRoom)
+                {
+                    if (connections.ContainsKey(playerInRoom.id) && playerInRoom.id != __playerData.id)
+                        connections[playerInRoom.id].Send(MessageConstants.MESSAGE,
+                            new NetworkConsoleMessage(__playerData.id,
+                            itemsManager.GetMessageWhenSomeoneUsedSuitcase(playerInRoom.playerName),
+                            MessageColor.LIGHT_BLUE));
+                }
+            }
+            //Wrong password
+            else
+            {
+                clientConnection.Send(MessageConstants.MESSAGE,
+                new NetworkConsoleMessage(__playerData.id,
+                itemsManager.GetMessageWhenWrondPassword(),
+                MessageColor.RED));
+            }
+        }
+        //Invalid password
+        else
+            clientConnection.Send(MessageConstants.MESSAGE,
+                 new NetworkConsoleMessage(__playerData.id,
+                 itemsManager.GetMessageWhenInvalidPassword(),
+                 MessageColor.RED));
+    }
+    private void UseSuitcaseOnClient(NetworkMessage message)
+    {
+        NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
+        int networkPlayerId = int.Parse(defaultMessage.inputs[0]);
+        OnSuitcaseOpened(networkPlayerId);
+    }
+    ///////////////////////////////////
+    // SAY command
+    public void AskServerToSay(PlayerData p_playerData, string p_message)
+    {
+        NetworkDefaultMessage message = new NetworkDefaultMessage(new[] { p_playerData.id.ToString(), p_message });
+        SendMessageToServer(MessageConstants.SAY, message);
+    }
+    private void TryToSayOnServer(NetworkMessage message)
+    {
+        NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
+        PlayerData __playerData = playersManager.FindPlayerById(int.Parse(defaultMessage.inputs[0]));
+        string __message = defaultMessage.inputs[1];
+
+        foreach (PlayerData playerInRoom in __playerData.currentRoom.playersInRoom)
+        {
+            if (connections.ContainsKey(playerInRoom.id))
+                connections[playerInRoom.id].Send(MessageConstants.MESSAGE,
+                new NetworkConsoleMessage(__playerData.id,
+                __playerData.playerName + " says: " + __message,
+                MessageColor.WHITE));
+        }
+    }
+    ///////////////////////////////////
+    // WHISPER command
+    public void AskServerToWhisper(PlayerData p_playerData, string p_target, string p_message)
+    {
+        NetworkDefaultMessage message = new NetworkDefaultMessage(new[] { p_playerData.id.ToString(), p_target ,p_message });
+        SendMessageToServer(MessageConstants.WHISPER, message);
+    }
+    private void TryToWhisperOnServer(NetworkMessage message)
+    {
+        NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
+        PlayerData __playerData = playersManager.FindPlayerById(int.Parse(defaultMessage.inputs[0]));
+        string __target = defaultMessage.inputs[1];
+        string __message = defaultMessage.inputs[2];
+
+        bool __messageSend = false;
+        foreach (PlayerData playerInRoom in __playerData.currentRoom.playersInRoom)
+        {
+            if (connections.ContainsKey(playerInRoom.id) && playerInRoom.playerName == __target)
+            {
+                connections[playerInRoom.id].Send(MessageConstants.MESSAGE,
+                new NetworkConsoleMessage(__playerData.id,
+                __playerData.playerName + " whispers: " + __message,
+                MessageColor.GREEN));
+                __messageSend = true;
+                message.conn.Send(MessageConstants.MESSAGE,
+                new NetworkConsoleMessage(__playerData.id,
+                "You whispers to " + __target + ": " + __message,
+                MessageColor.GREEN));
+                __messageSend = true;
+            }
+        }
+        if (!__messageSend)
+            message.conn.Send(MessageConstants.MESSAGE,
+                 new NetworkConsoleMessage(__playerData.id,
+                 "There is nobody in the room with this name.",
+                 MessageColor.RED));
     }
     ///////////////////////////////////
     private void InitializePlayerOnClient(NetworkMessage message)
@@ -258,11 +475,9 @@ public class NetworkManager : MonoBehaviour
     private void ServerMessageOnClient(NetworkMessage message)
     {
         NetworkConsoleMessage networkConsoleMessage = message.ReadMessage<NetworkConsoleMessage>();
-
-        if (playersManager.activePlayer.id != networkConsoleMessage.playerId)
-        {
-            UIManager.CreateMessage(networkConsoleMessage.message, networkConsoleMessage.color);
-        }
+        
+        //if (playersManager.activePlayer.id != networkConsoleMessage.playerId)
+        UIManager.CreateMessage(networkConsoleMessage.message, networkConsoleMessage.color);
     }
 
     private void ServerAskedPlayerNameOnClient(NetworkMessage message)
@@ -325,6 +540,9 @@ public class NetworkManager : MonoBehaviour
         networkClient.RegisterHandler(MessageConstants.PLAYER_READY, PlayerInLobbyReadyOnclient);
         networkClient.RegisterHandler(MessageConstants.GET, GetItemOnClient);
         networkClient.RegisterHandler(MessageConstants.DROP, DropItemOnClient);
+        networkClient.RegisterHandler(MessageConstants.USE, UseItemOnClient);
+        networkClient.RegisterHandler(MessageConstants.USE_SUITCASE, UseSuitcaseOnClient);
+        networkClient.RegisterHandler(MessageConstants.USE_HOLE, UseSuitcaseOnClient);
     }
 
     public void StartServer(int port)
@@ -341,6 +559,10 @@ public class NetworkManager : MonoBehaviour
         NetworkServer.RegisterHandler(MessageConstants.JOIN_IN_LOBBY, PlayerJoinedInLobbyOnServer);
         NetworkServer.RegisterHandler(MessageConstants.GET, TryToGetItemOnServer);
         NetworkServer.RegisterHandler(MessageConstants.DROP, TryToDropItemOnServer);
+        NetworkServer.RegisterHandler(MessageConstants.USE, TryToUseItemOnServer);
+        NetworkServer.RegisterHandler(MessageConstants.USE_SUITCASE, TryToUseSuitcaseOnServer);
+        NetworkServer.RegisterHandler(MessageConstants.SAY, TryToSayOnServer);
+        NetworkServer.RegisterHandler(MessageConstants.WHISPER, TryToWhisperOnServer);
     }
 
     public void ClearClientState()

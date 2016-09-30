@@ -18,6 +18,8 @@ public class CommandManager : MonoBehaviour
     public event Action                         OnTryToStopServer;
     public event Action<string, int>            OnTryToConnectOnServer;
     public event Action<string>                 OnTryToLookItem;
+    public event Action<string>                 OnTryToSay;
+    public event Action<string, string>         OnTryToWhisper;
     public event Action<int, string>            OnSendMessageToPlayers;
     public event Action<string>                 OnSendPlayerNameToServer;
 
@@ -204,11 +206,24 @@ public class CommandManager : MonoBehaviour
             //Chat commands
             case "say":
             case "s":
-                Debug.Log("Say something(args[1]) to all players");
+                if (args.Count <= 1)
+                    UIManager.CreateMessage("This command requires a message.", MessageColor.RED);
+                else
+                {
+                    args.RemoveAt(0);
+                    OnTryToSay(string.Join(" ", args.ToArray()));
+                }
                 break;
             case "whisper":
             case "w":
-                Debug.Log("Whisper something(args[2]) to player (args[1])");
+                if (args.Count <= 2)
+                    UIManager.CreateMessage("This command requires a target and a message.", MessageColor.RED);
+                else
+                {
+                    string __target = args[1];
+                    args.RemoveRange(0, 2);
+                    OnTryToWhisper(__target ,string.Join(" ", args.ToArray()));
+                }
                 break;
         }
     }
