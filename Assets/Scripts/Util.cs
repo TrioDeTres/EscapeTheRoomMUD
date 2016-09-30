@@ -18,6 +18,8 @@ public class Util
             return new Color(1f, 0.15f, 0.15f);
         else if (p_color == MessageColor.YELLOW)
             return new Color(1f, 1f, 0.2f);
+        else if (p_color == MessageColor.GREEN)
+            return new Color(0f, 255f / 255f, 45f/255f);
         return Color.white;
     }
 

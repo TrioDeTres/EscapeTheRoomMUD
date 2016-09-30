@@ -24,6 +24,10 @@ public class RoomsManager : MonoBehaviour
     {
         return "Server says: There is no item with this name in the room.";
     }
+    public string GetMessageWhenRoomDontHaveTargetItem()
+    {
+        return "Server says: The target item is not on the room.";
+    }
     public string GetMessageWhenLocked(PlayerData p_player, CardinalPoint p_direction)
     {
         return "Server says: " + p_player.currentRoom.adjacentRooms[(int)p_direction].messageWhenLocked;
@@ -33,7 +37,7 @@ public class RoomsManager : MonoBehaviour
     {
         return "Server says: " + playerName + " has left room.";
     }
-
+    
     public void MoveToRoom(PlayerData p_player, CardinalPoint p_direction, bool p_localPlayer)
     {
         Room __oldRoom = p_player.currentRoom;

@@ -26,10 +26,25 @@ public class GameSceneManager : MonoBehaviour
         commandManager.OnTryToConnectOnServer += OnTryToConnectOnServer;
         commandManager.OnTryToStartServer += OnTryToSetupServer;
         commandManager.OnTryToStopServer += OnTryToStopServer;
+        commandManager.OnTryToSay += TryToSay;
         commandManager.OnSendMessageToPlayers += OnSendMessageToPlayers;
         commandManager.OnSendPlayerNameToServer += OnSendPlayerNameToServer;
 
+        networkManager.OnSuitcaseOpened += OnSuitcaseOpened;
+        networkManager.OnPlayInteraction += OnPlayInteraction;
         uiManager.OnExecuteMessage += commandManager.ParseMessage;
+    }
+
+    private void OnPlayInteraction(int p_id, string p_sourceName, string p_targetName)
+    {
+        Item __source = itemsManager.GetItem(p_sourceName);
+        Item __target = itemsManager.GetItem(p_targetName);
+        PlayInteraction(__target.GetInteraction(__source), playersManager.activePlayer.id);
+    }
+
+    private void OnSuitcaseOpened(int p_playerID)
+    {
+        PlayInteraction(itemsManager.GetItem("suitcase").interactions[0],p_playerID);
     }
 
     private void OnTryToConnectOnServer(string address, int port)
@@ -60,57 +75,24 @@ public class GameSceneManager : MonoBehaviour
 
     private void TryToUseSuitcase(string p_param)
     {
-        int __result = 0;
-        //Player is not on the Office
-        if (playersManager.activePlayer.currentRoom != roomsManager.rooms[1])
-            UIManager.CreateMessage("Item not found.", MessageColor.RED);
-        //Valid password
-        if (int.TryParse(p_param, out __result))
-        {
-            //Right password
-            if (__result == 123456)
-                PlayInteraction(itemsManager.GetItem("suitcase").interactions[0]);
-            //Wrong password
-            else
-                UIManager.CreateMessage("This is the wrong password.", MessageColor.RED);
-        }
-        //Invalid password
-        else
-            UIManager.CreateMessage("This is an invalid password.", MessageColor.RED);
+        Debug.Log(p_param);
+        networkManager.AskServerToUseSuitcase(playersManager.activePlayer, p_param);
     }
 
     private void TryToUseItem(string p_source, string p_target)
     {
-        //Player don't have the item
-        if (!playersManager.activePlayer.HasItem(p_source))
-            UIManager.CreateMessage("You don't have this item on your inventory.", MessageColor.RED);
-        //There is no target item on the room
-        else if (!playersManager.activePlayer.currentRoom.HasItem(p_target))
-            UIManager.CreateMessage("The target item is not on the room.", MessageColor.RED);
-        //The items exist
-        else
-        {
-            Item __source = playersManager.activePlayer.GetItem(p_source);
-            Item __target = playersManager.activePlayer.currentRoom.GetItem(p_target);
-
-            //Source can't be used
-            if (!__source.isUsable)
-                UIManager.CreateMessage("The target item cannot be used.", MessageColor.RED);
-            //No interaction between items
-            else if (!__target.HasInteractionWithItem(__source))
-                UIManager.CreateMessage("These items can't be use together.", MessageColor.RED);
-            //Interaction not active
-            else if (!__target.GetInteraction(__source).active)
-                UIManager.CreateMessage("Nothing happened.", MessageColor.RED);
-            else
-                PlayInteraction(__target.GetInteraction(__source));
-        }
+        networkManager.AskServerToUseItem(playersManager.activePlayer, p_source, p_target);
     }
 
-    private void PlayInteraction(ItemInteraction p_interaction)
+    private void PlayInteraction(ItemInteraction p_interaction, int p_playerId)
     {
         if (!string.IsNullOrEmpty(p_interaction.messageWhenActivated))
-            UIManager.CreateMessage(p_interaction.messageWhenActivated, MessageColor.BLUE);
+        {
+            if (p_playerId == playersManager.activePlayer.id)
+                UIManager.CreateMessage(p_interaction.messageWhenActivated, MessageColor.BLUE);
+            //else
+            //   UIManager.CreateMessage(p_interaction.messageWhenActivated, MessageColor.BLUE);
+        }
 
         foreach (InteractionChangeItemDescription __interaction in p_interaction.changeItemDescriptions)
             __interaction.target.itemDescription = __interaction.newDescription;
@@ -128,7 +110,10 @@ public class GameSceneManager : MonoBehaviour
 
         p_interaction.active = false;
     }
-
+    private void TryToSay(string p_message)
+    {
+        networkManager.AskServerToSay(playersManager.activePlayer, p_message);
+    }
     private void TryToDropItem(string p_itemName)
     {
         networkManager.AskServerToDropItem(playersManager.activePlayer, p_itemName);
@@ -146,7 +131,6 @@ public class GameSceneManager : MonoBehaviour
 
     private void TryToMoveToRoom(CardinalPoint p_direction)
     {
-        Debug.Log("Player id trying move to room " + playersManager.activePlayer.id);
         networkManager.AskServerMoveToRoom(playersManager.activePlayer, p_direction);
     }
 
