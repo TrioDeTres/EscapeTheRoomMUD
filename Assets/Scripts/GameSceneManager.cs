@@ -22,11 +22,13 @@ public class GameSceneManager : MonoBehaviour
         commandManager.OnTryToLookRoom += TryToLookRoom;
         commandManager.OnTryToLookItem += TryToLookItem;
         commandManager.OnTryToUseItem += TryToUseItem;
+        commandManager.OnTryToUseHole += TryToUseHole;
         commandManager.OnTryToUseSuitcase += TryToUseSuitcase;
         commandManager.OnTryToConnectOnServer += OnTryToConnectOnServer;
         commandManager.OnTryToStartServer += OnTryToSetupServer;
         commandManager.OnTryToStopServer += OnTryToStopServer;
         commandManager.OnTryToSay += TryToSay;
+        commandManager.OnTryToSayHole += TryToSayHole;
         commandManager.OnTryToWhisper += TryToWhisper;
         commandManager.OnSendMessageToPlayers += OnSendMessageToPlayers;
         commandManager.OnSendPlayerNameToServer += OnSendPlayerNameToServer;
@@ -34,21 +36,45 @@ public class GameSceneManager : MonoBehaviour
 
         networkManager.OnSuitcaseOpened += OnSuitcaseOpened;
         networkManager.OnPlayInteraction += OnPlayInteraction;
+        networkManager.OnUseHole += OnUseHole;
         uiManager.OnExecuteMessage += commandManager.ParseMessage;
     }
 
-    
+    private void OnUseHole(int p_id, string p_sourceName)
+    {
+        Item __source = itemsManager.GetItem(p_sourceName);
+        PlayerData __data = playersManager.FindPlayerById(p_id);
+        __data.inventory.Remove(__source);
+        if (__data.currentRoom.roomID == 0)
+            roomsManager.rooms[4].items.Add(__source);
+        else
+            roomsManager.rooms[0].items.Add(__source);
+    }
+
+    private void TryToUseHole(string p_source)
+    {
+        networkManager.AskServerToUseHole(playersManager.activePlayer, p_source);
+    }
 
     private void OnPlayInteraction(int p_id, string p_sourceName, string p_targetName)
     {
         Item __source = itemsManager.GetItem(p_sourceName);
-        Item __target = itemsManager.GetItem(p_targetName);
-        PlayInteraction(__target.GetInteraction(__source), playersManager.activePlayer.id);
+        Item __target = playersManager.FindPlayerById(p_id).currentRoom.GetItem(p_targetName);
+
+        //remove source from user
+        for (int i = 0; i < playersManager.players.Count; i++)
+            if (playersManager.players[i].HasItem(p_sourceName))
+                playersManager.players[i].inventory.Remove(__source);
+        PlayInteraction(__target.GetInteraction(__source), p_id);
     }
 
     private void OnSuitcaseOpened(int p_playerID)
     {
-        PlayInteraction(itemsManager.GetItem("suitcase").interactions[0],p_playerID);
+        if (!itemsManager.GetItem("suitcase").interactions[0].active && p_playerID == playersManager.activePlayer.id)
+            UIManager.CreateMessage("The suitcase is already open.", MessageColor.RED);
+        else
+
+            PlayInteraction(itemsManager.GetItem("suitcase").interactions[0], p_playerID);
     }
 
     private void OnTryToConnectOnServer(string address, int port)
@@ -122,6 +148,10 @@ public class GameSceneManager : MonoBehaviour
     private void TryToSay(string p_message)
     {
         networkManager.AskServerToSay(playersManager.activePlayer, p_message);
+    }
+    private void TryToSayHole(string p_message)
+    {
+        networkManager.AskServerToSayHole(playersManager.activePlayer, p_message);
     }
     private void TryToWhisper(string p_target, string p_message)
     {

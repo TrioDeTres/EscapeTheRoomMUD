@@ -11,7 +11,8 @@ public enum DefaultMessageType
     SHOW_INVENTORY,
     GET_ITEM,
     DROP_ITEM,
-    ITEM_NOT_FOUND
+    ITEM_NOT_FOUND,
+    MAP
 }
 public enum MessageColor
 {
@@ -79,12 +80,36 @@ public class UIManager : MonoBehaviour
     {
         uiManager.CreateDefautUIMessage(p_type, p_params);
     }
+    public static void CreateMap(int p_roomID)
+    {
+        uiManager.CreateUIMap(p_roomID);
+    }
+    private void CreateUIMap(int p_roomID)
+    {
+        GameObject __go = Instantiate(uiDefaultMessagesPrefabs[(int)DefaultMessageType.MAP]);
+        __go.transform.SetParent(messagesContainer.transform);
+        __go.transform.localScale = Vector3.one;
+
+        Text __text = __go.GetComponent<Text>();
+        texts.Add(__text);
+        bool __recalculate = false;
+        string __tempText = __text.text;
+        for (int i = 0; i < 9; i++)
+        {
+            if (i == p_roomID)
+                __tempText = __tempText.Replace(i.ToString(), "x");
+            else
+                __tempText = __tempText.Replace(i.ToString(), "  ");
+        }
+        __text.text = __tempText;
+        StartCoroutine(VerticalScrollBarDelay(__text, __recalculate));
+    }
     private void ClearUIMessages()
     {
         for (int i = 0; i < texts.Count; i++)
             Destroy(texts[i].gameObject);
         texts.Clear();
-        inputField.ActivateInputField();
+        //inputField.ActivateInputField();
         StartCoroutine(VerticalScrollBarDelay(null, false));
     }
     private void CreateUIMessage(string p_message, MessageColor p_color)
@@ -98,7 +123,7 @@ public class UIManager : MonoBehaviour
         __text.color = Util.MessageColorToRGB(p_color);
         texts.Add(__text);
 
-        inputField.ActivateInputField();
+        //inputField.ActivateInputField();
         StartCoroutine(VerticalScrollBarDelay(__text, true));
     }
     private void CreateDefautUIMessage(DefaultMessageType p_type, List<string> p_params)
@@ -121,7 +146,7 @@ public class UIManager : MonoBehaviour
                 __recalculate = true;
                 break;
         }
-        inputField.ActivateInputField();
+        //inputField.ActivateInputField();
         StartCoroutine(VerticalScrollBarDelay(__text, __recalculate));
     }
     IEnumerator VerticalScrollBarDelay(Text p_text, bool p_recalculateSize)

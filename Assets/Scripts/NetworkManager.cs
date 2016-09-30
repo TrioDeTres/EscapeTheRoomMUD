@@ -22,13 +22,15 @@ public static class MessageConstants
     public const short USE_SUITCASE = 1011;
     public const short USE_HOLE = 1012;
     public const short SAY = 1013;
-    public const short WHISPER = 1014;
+    public const short SAY_HOLE = 1014;
+    public const short WHISPER = 1015;
 }
 
 public class NetworkManager : MonoBehaviour
 {
     public event Action<int> OnSuitcaseOpened;
     public event Action<int, string, string> OnPlayInteraction;
+    public event Action<int, string> OnUseHole;
 
     private static bool isServerStarted;
     private static bool isClientConnected;
@@ -97,7 +99,7 @@ public class NetworkManager : MonoBehaviour
 //=======
                 if (connections.ContainsKey(playerInRoom.id) && playerInRoom.id != playerData.id)
                 {
-                    connections[playerInRoom.id].Send(MessageConstants.MESSAGE, new NetworkConsoleMessage(playerData.id, roomsManager.GetMessageWhenMovedInSuccessfully(playerData.playerName), MessageColor.LIGHT_BLUE));
+                    connections[playerInRoom.id].Send(MessageConstants.MESSAGE, new NetworkConsoleMessage(playerData.id, roomsManager.GetMessageWhenMovedOutSuccessfully(playerData.playerName), MessageColor.LIGHT_BLUE));
                 }
 //>>>>>>> origin/Gabriel
             }
@@ -334,6 +336,69 @@ public class NetworkManager : MonoBehaviour
         OnPlayInteraction(networkPlayerId, defaultMessage.inputs[1], defaultMessage.inputs[2]);
     }
     ///////////////////////////////////
+    // USE_HOLE command
+    public void AskServerToUseHole(PlayerData p_playerData, string p_source)
+    {
+        NetworkDefaultMessage message = new NetworkDefaultMessage(new[] { p_playerData.id.ToString(), p_source});
+        SendMessageToServer(MessageConstants.USE_HOLE, message);
+    }
+    private void TryToUseHoleOnServer(NetworkMessage message)
+    {
+        NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
+        NetworkConnection clientConnection = message.conn;
+
+        PlayerData __playerData = playersManager.FindPlayerById(int.Parse(defaultMessage.inputs[0]));
+        string __sourceName = defaultMessage.inputs[1];
+
+        //Player don't have the item
+        if (!__playerData.HasItem(__sourceName))
+        {
+            clientConnection.Send(MessageConstants.MESSAGE,
+                new NetworkConsoleMessage(__playerData.id,
+                playersManager.GetMessageWhenPlayerDontHaveItem(),
+                MessageColor.RED));
+        }
+        //There is no target item on the room
+        else if (__playerData.currentRoom.roomID != 0 && __playerData.currentRoom.roomID != 4)
+        {
+            clientConnection.Send(MessageConstants.MESSAGE,
+                new NetworkConsoleMessage(__playerData.id,
+                "Server says: There is no hole in the room",
+                MessageColor.RED));
+        }
+        //The items exist
+        else
+        {
+            Item __source = __playerData.GetItem(__sourceName);
+
+            //Source can't be used
+            if (!__source.isTransferable)
+                clientConnection.Send(MessageConstants.MESSAGE,
+                    new NetworkConsoleMessage(__playerData.id,
+                    itemsManager.GetMessageWhenItemCantBeTransfered(),
+                    MessageColor.RED));
+            else
+            {
+                NetworkServer.SendToAll(MessageConstants.USE_HOLE, new NetworkDefaultMessage(new[] { __playerData.id.ToString(), __sourceName}));
+                //Only send messages to player in same room
+                foreach (PlayerData playerInRoom in playersManager.players)
+                {
+                    if (playerInRoom.currentRoom.roomID == 0 || playerInRoom.currentRoom.roomID == 4)
+                        connections[playerInRoom.id].Send(MessageConstants.MESSAGE,
+                            new NetworkConsoleMessage(__playerData.id,
+                            itemsManager.GetMessageWhenSomeoneSendItem(playerInRoom.playerName, __sourceName),
+                            MessageColor.LIGHT_BLUE));
+                }
+            }
+        }
+    }
+    private void UseHoleOnClient(NetworkMessage message)
+    {
+        NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
+        int networkPlayerId = int.Parse(defaultMessage.inputs[0]);
+        OnUseHole(networkPlayerId, defaultMessage.inputs[1]);
+    }
+    ///////////////////////////////////
     // USE_SUITCASE command
     public void AskServerToUseSuitcase(PlayerData p_playerData, string p_password)
     {
@@ -347,7 +412,7 @@ public class NetworkManager : MonoBehaviour
 
         PlayerData __playerData = playersManager.FindPlayerById(int.Parse(defaultMessage.inputs[0]));
         string __password = defaultMessage.inputs[1];
-        int __result = 0;
+        long __result = 0;
 
         //Player is not on the Office
         if (__playerData.currentRoom != roomsManager.rooms[1])
@@ -358,10 +423,10 @@ public class NetworkManager : MonoBehaviour
                 MessageColor.RED));
         }
         //Valid password
-        else if (int.TryParse(__password, out __result))
+        else if (long.TryParse(__password, out __result))
         {
             //Right password
-            if (__result == 123456)
+            if (__result == 895402763152)
             {
                 NetworkServer.SendToAll(MessageConstants.USE_SUITCASE, new NetworkDefaultMessage(new[] { __playerData.id.ToString() }));
                 //Only send messages to player in same room
@@ -418,6 +483,42 @@ public class NetworkManager : MonoBehaviour
                     new NetworkConsoleMessage(__playerData.id,
                     __playerData.playerName + " says: " + __message,
                     MessageColor.WHITE));
+            }
+        }
+    }
+    ///////////////////////////////////
+    // SAY_HOLE command
+    public void AskServerToSayHole(PlayerData p_playerData, string p_message)
+    {
+        NetworkDefaultMessage message = new NetworkDefaultMessage(new[] { p_playerData.id.ToString(), p_message });
+        SendMessageToServer(MessageConstants.SAY_HOLE, message);
+    }
+    private void TryToSayHoleOnServer(NetworkMessage message)
+    {
+        NetworkDefaultMessage defaultMessage = message.ReadMessage<NetworkDefaultMessage>();
+        PlayerData __playerData = playersManager.FindPlayerById(int.Parse(defaultMessage.inputs[0]));
+        string __message = defaultMessage.inputs[1];
+
+        if (__playerData.currentRoom.roomID != 0 && __playerData.currentRoom.roomID != 4)
+            message.conn.Send(MessageConstants.MESSAGE,
+                new NetworkConsoleMessage(__playerData.id,
+                "There is no hole in the room.",
+                MessageColor.RED));
+        else
+        {
+            int __targetRoomId = 0;
+            if (__playerData.currentRoom.roomID == 0)
+                __targetRoomId = 4;
+            foreach (PlayerData playerInRoom in roomsManager.FindRoomById(__targetRoomId).playersInRoom)
+            {
+                if (playerInRoom.id != __playerData.id)
+                {
+                    if (connections.ContainsKey(playerInRoom.id))
+                        connections[playerInRoom.id].Send(MessageConstants.MESSAGE,
+                        new NetworkConsoleMessage(__playerData.id,
+                        __playerData.playerName + " says from the hole: " + __message,
+                        MessageColor.WHITE));
+                }
             }
         }
     }
@@ -515,8 +616,6 @@ public class NetworkManager : MonoBehaviour
     private void ServerMessageOnClient(NetworkMessage message)
     {
         NetworkConsoleMessage networkConsoleMessage = message.ReadMessage<NetworkConsoleMessage>();
-        
-        //if (playersManager.activePlayer.id != networkConsoleMessage.playerId)
         UIManager.CreateMessage(networkConsoleMessage.message, networkConsoleMessage.color);
     }
 
@@ -583,7 +682,7 @@ public class NetworkManager : MonoBehaviour
         networkClient.RegisterHandler(MessageConstants.DROP, DropItemOnClient);
         networkClient.RegisterHandler(MessageConstants.USE, UseItemOnClient);
         networkClient.RegisterHandler(MessageConstants.USE_SUITCASE, UseSuitcaseOnClient);
-        networkClient.RegisterHandler(MessageConstants.USE_HOLE, UseSuitcaseOnClient);
+        networkClient.RegisterHandler(MessageConstants.USE_HOLE, UseHoleOnClient);
     }
 
     public void StartServer(int port)
@@ -603,7 +702,9 @@ public class NetworkManager : MonoBehaviour
         NetworkServer.RegisterHandler(MessageConstants.DROP, TryToDropItemOnServer);
         NetworkServer.RegisterHandler(MessageConstants.USE, TryToUseItemOnServer);
         NetworkServer.RegisterHandler(MessageConstants.USE_SUITCASE, TryToUseSuitcaseOnServer);
+        NetworkServer.RegisterHandler(MessageConstants.USE_HOLE, TryToUseHoleOnServer);
         NetworkServer.RegisterHandler(MessageConstants.SAY, TryToSayOnServer);
+        NetworkServer.RegisterHandler(MessageConstants.SAY_HOLE, TryToSayHoleOnServer);
         NetworkServer.RegisterHandler(MessageConstants.WHISPER, TryToWhisperOnServer);
     }
 

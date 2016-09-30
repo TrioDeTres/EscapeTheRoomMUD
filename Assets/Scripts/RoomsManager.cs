@@ -53,12 +53,36 @@ public class RoomsManager : MonoBehaviour
 
         if (p_localPlayer)
         {
-            List<PlayerData> playersInRoom = p_player.currentRoom.playersInRoom.FindAll(p => p.id != p_player.id);
-            string playersInRoomMessage = playersInRoom.Count > 0 ?  "You can see players" + string.Join(" ", playersInRoom.Select(p => p.playerName).ToArray()) + "." : String.Empty;
-            UIManager.CreateMessage("Server says: You moved " + p_direction.ToString().ToLower() + ". You are now at the " + p_player.currentRoom.roomFullName + "." + playersInRoomMessage, MessageColor.LIGHT_BLUE);
+            UIManager.CreateMessage("Server says: You moved " + p_direction.ToString().ToLower() + ". You are now at the " + 
+                p_player.currentRoom.roomFullName + "." + GetPlayersInRoomMessage(p_player.currentRoom, p_player.id), MessageColor.LIGHT_BLUE);
+            if (p_player.currentRoom.roomID == 8)
+                UIManager.CreateMessage("Congratulations! You reached the hall, you won the game.");
         }
     }
-
+    public string GetPlayersInRoomMessage(Room p_room, int p_id)
+    {
+        bool __onlyEmpty = true;
+        string __msg = " You can see the players: ";
+        for (int i = 0; i < p_room.playersInRoom.Count; i++)
+        {
+            if (p_room.playersInRoom[i].playerName != " " &&
+                !string.IsNullOrEmpty(p_room.playersInRoom[i].playerName) &&
+                p_id != p_room.playersInRoom[i].id)
+                __onlyEmpty = false;
+        }
+        if (__onlyEmpty)
+            return string.Empty;
+        for (int i = 0; i < p_room.playersInRoom.Count; i++)
+        {
+            if (p_room.playersInRoom[i].playerName != " " &&
+                !string.IsNullOrEmpty(p_room.playersInRoom[i].playerName) &&
+                p_id != p_room.playersInRoom[i].id)
+                __msg += p_room.playersInRoom[i].playerName + ", ";
+        }
+        __msg = __msg.Remove(__msg.Length - 2, 2);
+        __msg += ".";
+        return __msg;
+    }
     public void TryToLookRoom(PlayerData p_player)
     {
         string __desc = "Room Description: " + Environment.NewLine + p_player.currentRoom.roomDescription;

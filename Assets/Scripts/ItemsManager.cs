@@ -41,6 +41,10 @@ public class ItemsManager : MonoBehaviour
     {
         return "Server says: This item can't be used.";
     }
+    public string GetMessageWhenItemCantBeTransfered()
+    {
+        return "Server says: This item can't be transferred.";
+    }
     public string GetMessageWhenSomeonePickedItem(string p_playerName, string p_itemName)
     {
         return "Server says: " + p_playerName + " picked up the " + p_itemName + ".";
@@ -52,6 +56,10 @@ public class ItemsManager : MonoBehaviour
     public string GetMessageWhenSomeoneUsedItem(string p_playerName, string p_sourceName, string p_targetName)
     {
         return "Server says: " + p_playerName + " used the " + p_sourceName + " on the " + p_targetName + ".";
+    }
+    public string GetMessageWhenSomeoneSendItem(string p_playerName, string p_sourceName)
+    {
+        return "Server says: " + p_playerName + " send the " + p_sourceName + " through the hole.";
     }
     public string GetMessageWhenSomeoneUsedSuitcase(string p_playerName)
     {

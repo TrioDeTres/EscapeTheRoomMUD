@@ -41,10 +41,10 @@ public class PlayersManager : MonoBehaviour
             if (__data.currentRoom == p_activePlayer.currentRoom)
                 DisplayInventoryOfPlayer(__data);
             else
-                UIManager.CreateMessage("There is no player in the room with the name " + p_name);
+                UIManager.CreateMessage("There is no player in the room with the name " + p_name + ".");
         }
         else
-            UIManager.CreateMessage("There is no player in the game with the name " + p_name);
+            UIManager.CreateMessage("There is no player in the game with the name " + p_name + ".");
     }
     private void DisplayInventoryOfPlayer(PlayerData p_activePlayer)
     {

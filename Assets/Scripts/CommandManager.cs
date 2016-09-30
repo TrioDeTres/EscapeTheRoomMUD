@@ -10,6 +10,7 @@ public class CommandManager : MonoBehaviour
     public event Action<string>                 OnTryToShowInventory;
     public event Action<string, string>         OnTryToUseItem;
     public event Action<string>                 OnTryToUseHole;
+    public event Action<string>                 OnTryToSayHole;
     public event Action<string>                 OnTryToUseSuitcase;
     public event Action<string>                 OnTryToGetItem;
     public event Action<string>                 OnTryToDropItem;
@@ -46,7 +47,7 @@ public class CommandManager : MonoBehaviour
         {
             string fullText = string.Join(" ", args.ToArray());
 
-            UIManager.CreateMessage("You said: " + fullText, MessageColor.WHITE);
+            //UIManager.CreateMessage("You said: " + fullText, MessageColor.WHITE);
             OnSendMessageToPlayers(playersManager.activePlayer.id, playersManager.activePlayer.playerName + " says: " + fullText);
             return;
         }
@@ -81,7 +82,8 @@ public class CommandManager : MonoBehaviour
 
                     OnTryToConnectOnServer(args[1], port);
 
-                    if (NetworkManager.IsClientConnected()) { 
+                    if (NetworkManager.IsClientConnected())
+                    { 
                         UIManager.CreateMessage("Connecting to " + args[1] + " on port " + args[2] + ".", MessageColor.YELLOW);
                     }
 
@@ -208,9 +210,9 @@ public class CommandManager : MonoBehaviour
                 if (args.Count <= 2)
                     UIManager.CreateMessage("This command requires an item name and a target.", 
                         MessageColor.RED);
-                else if (args[1].ToLower() == "hole")
-                    OnTryToUseHole(args[2]);
-                else if (args[2].ToLower() == "suitcase")
+                else if (args[2] == "hole")
+                    OnTryToUseHole(args[1]);
+                else if (args[2] == "suitcase")
                     OnTryToUseSuitcase(args[1]);
                 else
                     OnTryToUseItem(args[1], args[2]);
@@ -221,6 +223,16 @@ public class CommandManager : MonoBehaviour
             case "s":
                 if (args.Count <= 1)
                     UIManager.CreateMessage("This command requires a message.", MessageColor.RED);
+                else if (args[1] == "hole")
+                {
+                    if (args.Count <= 2)
+                        UIManager.CreateMessage("This command requires a message.", MessageColor.RED);
+                    else
+                    {
+                        args.RemoveRange(0,2);
+                        OnTryToSayHole(string.Join(" ", args.ToArray()));
+                    }
+                }
                 else
                 {
                     args.RemoveAt(0);
@@ -237,6 +249,9 @@ public class CommandManager : MonoBehaviour
                     args.RemoveRange(0, 2);
                     OnTryToWhisper(__target ,string.Join(" ", args.ToArray()));
                 }
+                break;
+            case "map":
+                UIManager.CreateMap(playersManager.activePlayer.currentRoom.roomID);
                 break;
         }
     }
