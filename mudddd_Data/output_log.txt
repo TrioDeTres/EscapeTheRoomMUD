@@ -1,0 +1,68 @@
+Initialize engine version: 5.5.0b4 (9f8737ccd563)
+GfxDevice: creating device client; threaded=1
+Direct3D:
+    Version:  Direct3D 11.0 [level 11.0]
+    Renderer: NVIDIA GeForce GT 420M (ID=0xdf1)
+    Vendor:   NVIDIA
+    VRAM:     977 MB
+    Driver:   9.18.13.3165
+Begin MonoManager ReloadAssembly
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.dll (this message is harmless)
+Loading E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.dll into Unity Child Domain
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\Assembly-CSharp.dll (this message is harmless)
+Loading E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\Assembly-CSharp.dll into Unity Child Domain
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.UI.dll (this message is harmless)
+Loading E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.UI.dll into Unity Child Domain
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.Networking.dll (this message is harmless)
+Loading E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.Networking.dll into Unity Child Domain
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.PlaymodeTestsRunner.dll (this message is harmless)
+Loading E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.PlaymodeTestsRunner.dll into Unity Child Domain
+- Completed reload, in  0.248 seconds
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\System.Core.dll (this message is harmless)
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\System.dll (this message is harmless)
+<RI> Initializing input.
+<RI> Input initialized.
+desktop: 1366x768 60Hz; virtual: 4310x1080 at -1024,0
+<RI> Initialized touch support.
+UnloadTime: 1.437174 ms
+Setting up 1 worker threads for Enlighten.
+  Thread -> id: 2d90 -> priority: 1 
+Initialize engine version: 5.5.0b4 (9f8737ccd563)
+GfxDevice: creating device client; threaded=1
+Direct3D:
+    Version:  Direct3D 11.0 [level 11.0]
+    Renderer: NVIDIA GeForce GT 420M (ID=0xdf1)
+    Vendor:   NVIDIA
+    VRAM:     977 MB
+    Driver:   9.18.13.3165
+Begin MonoManager ReloadAssembly
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.dll (this message is harmless)
+Loading E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.dll into Unity Child Domain
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\Assembly-CSharp.dll (this message is harmless)
+Loading E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\Assembly-CSharp.dll into Unity Child Domain
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.UI.dll (this message is harmless)
+Loading E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.UI.dll into Unity Child Domain
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.Networking.dll (this message is harmless)
+Loading E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.Networking.dll into Unity Child Domain
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.PlaymodeTestsRunner.dll (this message is harmless)
+Loading E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\UnityEngine.PlaymodeTestsRunner.dll into Unity Child Domain
+- Completed reload, in  0.108 seconds
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\System.Core.dll (this message is harmless)
+Platform assembly: E:\MUD\EscapeTheRoomMUD\mudddd_Data\Managed\System.dll (this message is harmless)
+<RI> Initializing input.
+<RI> Input initialized.
+desktop: 1366x768 60Hz; virtual: 4310x1080 at -1024,0
+<RI> Initialized touch support.
+UnloadTime: 1.471814 ms
+Setting up 1 worker threads for Enlighten.
+  Thread -> id: 1ed8 -> priority: 1 
+Socket: bind failed, error: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+Cannot open socket on ip {*} and port {2300}; check please your network, most probably port has been already occupied
+ 
+(Filename:  Line: 492)
+
+Socket: bind failed, error: Only one usage of each socket address (protocol/network address/port) is normally permitted.
+Cannot open socket on ip {*} and port {2300}; check please your network, most probably port has been already occupied
+ 
+(Filename:  Line: 492)
+

@@ -1,2 +1,0 @@
-# EscapeTheRoomMUD
-MUD

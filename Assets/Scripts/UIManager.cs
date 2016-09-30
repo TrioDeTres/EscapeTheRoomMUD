@@ -19,7 +19,8 @@ public enum MessageColor
     RED,
     LIGHT_BLUE,
     BLUE,
-    YELLOW
+    YELLOW,
+    GREEN
 }
 public class UIManager : MonoBehaviour
 {
@@ -48,6 +49,7 @@ public class UIManager : MonoBehaviour
     }
     void Update()
     {
+        inputField.ActivateInputField();
         if (Input.GetKeyDown(KeyCode.Return))
             ExecuteMassage();
     }
